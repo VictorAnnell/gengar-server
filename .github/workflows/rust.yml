@@ -79,7 +79,8 @@ jobs:
       - name: Annotate PR with clippy
         # if: ${{ failure() }}
         uses: actions-rs/clippy-check@v1
+        continue-on-error: true
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all-targets --all-features
+          args: --all-targets --all-features -- -W clippy::pedantic -W clippy::nursery
           name: Annotations
