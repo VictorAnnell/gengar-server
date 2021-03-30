@@ -76,9 +76,10 @@ jobs:
           command: clippy
           args: --all-targets --all-features -- -D warnings
 
-      - name: Annotate PR with clippy warnings
-        if: ${{ failure() }}
+      - name: Annotate PR with clippy
+        # if: ${{ failure() }}
         uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           args: --all-targets --all-features
+          name: Annotations
