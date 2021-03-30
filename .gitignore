@@ -8,3 +8,7 @@ target/
 
 # Auto-generated tag files
 tags
+
+# Session
+Session.vim
+Sessionx.vim
