@@ -28,7 +28,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: check
-          args: --verbose --all-targets --all-features
+          args: --all-targets --all-features
 
   test:
     name: Test Suite
@@ -68,13 +68,13 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: fmt
-          args: --all --verbose -- --check
+          args: --all -- --check
 
       - name: Run cargo clippy
         uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: --verbose --all-targets --all-features -- -D warnings
+          args: --all-targets --all-features -- -D warnings
 
       - name: Annotate PR with clippy warnings
         if: ${{ failure() }}
