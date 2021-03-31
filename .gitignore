@@ -12,3 +12,6 @@ tags
 # Session
 Session.vim
 Sessionx.vim
+
+# File for environment variables
+.env
