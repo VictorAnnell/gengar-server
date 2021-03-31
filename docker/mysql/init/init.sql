@@ -1,2 +1,2 @@
-CREATE DATABASE IF NOT EXISTS gangar_dev;
-GRANT ALL ON `gangar_dev`.* TO 'root'@'localhost';
+CREATE DATABASE IF NOT EXISTS gengar_dev;
+GRANT ALL ON `gengar_dev`.* TO 'root'@'localhost';

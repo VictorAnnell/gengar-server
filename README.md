@@ -22,7 +22,7 @@ The server back-end to the [VaccMe mobile application] written in Rust for the [
 
 	 *Note:* If you set up MySQL manually and didn't specify the MySQL user to be one with elevated
 	 permissions, you'll want to run a command like ```mysql -c "GRANT ALL ON
-	 `gangar_dev`.* TO ''@'localhost';" -uroot```, or something similar for the
+	 `gengar_dev`.* TO ''@'localhost';" -uroot```, or something similar for the
 	 user that you've specified.
 
 	 If you have [Docker] and [Docker Compose] you can use the provided docker-compose.yml file to automatically set up a MySQL container to work against. You can start the container with this command from the repositories root directory:
@@ -62,7 +62,7 @@ The server back-end to the [VaccMe mobile application] written in Rust for the [
 Build and run the project with cargo:
 
 ```shell
-cargo run
+$ cargo run
 ```
 
 Replace `run` with `build` if you want to build but not run.
@@ -77,13 +77,13 @@ To run formatting tests locally:
 
 1. Install rustfmt and clippy (if they aren't already) by running:
    ```
-   rustup component add rustfmt
-   rustup component add clippy
+   $ rustup component add rustfmt
+   $ rustup component add clippy
    ```
 
 2. Run clippy using cargo from the root of the project repo.
    ```
-	 cargo clippy --all-targets --all-features
+   $ cargo clippy --all-targets --all-features
    ```
    Each PR needs to compile without warning.
 
@@ -92,7 +92,7 @@ To run formatting tests locally:
    To see changes that need to be made, run:
 
    ```
-   cargo fmt --all -- --check
+   $ cargo fmt --all -- --check
    ```
 
    If all code is properly formatted (e.g. if you have not made any changes),
@@ -103,7 +103,7 @@ To run formatting tests locally:
    Once you are ready to apply the formatting changes, run:
 
    ```
-   cargo fmt --all
+   $ cargo fmt --all
    ```
 
    You won't see any output, but all your files will be corrected.
