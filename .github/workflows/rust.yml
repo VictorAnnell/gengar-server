@@ -44,6 +44,12 @@ jobs:
           toolchain: stable
           override: true
 
+      - name: Copy .env.sample
+        run: cp .env.sample .env
+
+      - name: Setup DB with Docker Compose
+        run: docker-compose up -d
+
       - name: Run cargo test
         uses: actions-rs/cargo@v1
         with:
