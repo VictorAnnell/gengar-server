@@ -25,7 +25,8 @@ mod tests {
 
     #[test]
     fn test_establish_connection() {
-        let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-        assert!(MysqlConnection::establish(&database_url).is_ok())
+        establish_connection();
     }
+
+
 }
