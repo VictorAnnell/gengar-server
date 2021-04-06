@@ -1,23 +1,19 @@
-extern crate diesel;
-extern crate gengar;
+use gengar::establish_pool;
+use mysql::prelude::*;
+use mysql::*;
 
-use self::models::*;
-use diesel::prelude::*;
-use gengar::*;
+fn main() -> std::result::Result<(), Error> {
+    let pool = establish_pool().unwrap();
+    let result: Vec<(String, String)> = pool
+        .get_conn()
+        .unwrap()
+        .query("SELECT name, certs from users")?;
 
-fn main() {
-    use self::schema::users::dsl::*;
-
-    let connection = establish_connection();
-    let results = users
-        // .limit(5)
-        .load::<User>(&connection)
-        .expect("Error loading users");
-
-    println!("Displaying {} users", results.len());
-    for user in results {
-        println!("{}", user.user);
+    println!("Displaying {} users", result.len());
+    for user in result {
+        println!("{}", user.0);
+        println!("{}", user.1);
         println!("-----------\n");
-        println!("{}", user.certs);
     }
+    Ok(())
 }
