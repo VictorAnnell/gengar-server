@@ -5,7 +5,7 @@ CREATE TABLE users (
 	id SERIAL PRIMARY KEY,
 	name TEXT NOT NULL,
 	certs TEXT NOT NULL
-)
+);
 
 INSERT INTO users (name, certs)
 VALUES
