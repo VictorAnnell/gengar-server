@@ -3,13 +3,22 @@ services:
   mysql:
     image: mysql
     container_name: gengar.mysql
+    restart: unless-stopped
     volumes:
       - "mysql-data:/var/lib/mysql/:delegated"
       - "./docker/mysql/init:/docker-entrypoint-initdb.d"
     ports:
       - "127.0.0.1:3306:3306"
     environment:
-      - MYSQL_ALLOW_EMPTY_PASSWORD=true
+      - MYSQL_ROOT_PASSWORD=gengar
+
+  adminer:
+    image: adminer
+    container_name: gengar.adminer
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"
+
 volumes:
   mysql-data:
     driver: local
