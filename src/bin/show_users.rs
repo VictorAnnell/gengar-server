@@ -1,13 +1,7 @@
-use gengar::establish_pool;
-use mysql::prelude::*;
-use mysql::*;
+use gengar::Database;
 
-fn main() -> std::result::Result<(), Error> {
-    let pool = establish_pool().unwrap();
-    let result: Vec<(String, String)> = pool
-        .get_conn()
-        .unwrap()
-        .query("SELECT name, certs from users")?;
+fn main() {
+    let result = Database::new().get_users().unwrap();
 
     println!("Displaying {} users", result.len());
     for user in result {
@@ -15,5 +9,4 @@ fn main() -> std::result::Result<(), Error> {
         println!("{}", user.1);
         println!("-----------\n");
     }
-    Ok(())
 }
