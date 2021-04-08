@@ -1,10 +1,4 @@
-use gengar::{add_two, Database};
-
-// Integration test of example function
-#[test]
-fn it_adds_two() {
-    assert_eq!(4, add_two(2));
-}
+use gengar::Database;
 
 // Integration test printing the certificates belonging to user1.
 // Note: does not actually print upon successful test.

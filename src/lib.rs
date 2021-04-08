@@ -3,12 +3,6 @@ use dotenv::dotenv;
 use mysql::{prelude::Queryable, Pool};
 use std::env;
 
-// Example function
-#[doc(hidden)]
-pub fn add_two(a: i32) -> i32 {
-    a + 2
-}
-
 /// Gengar user and vaccine certificate database.
 pub struct Database {
     pool: Pool,
@@ -61,12 +55,6 @@ impl Database {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    // Test of example function
-    #[test]
-    fn test_add_two() {
-        assert_eq!(4, add_two(2));
-    }
 
     #[test]
     fn db_new() {
