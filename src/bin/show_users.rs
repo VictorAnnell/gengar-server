@@ -1,3 +1,8 @@
+//! Example binary to demonstrate usage of gengar library
+//! Run this binary with the command:
+//! ```
+//! $ cargo run --bin show_users
+//! ```
 use gengar::Database;
 
 fn main() {
