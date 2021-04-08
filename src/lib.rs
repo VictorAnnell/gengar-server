@@ -69,12 +69,21 @@ mod tests {
     }
 
     #[test]
-    fn test_db() {
+    fn db_new() {
         Database::new();
     }
 
     #[test]
-    fn test_get_certs() {
+    fn get_users() {
+        let db = Database::new();
+
+        let result = db.get_users().unwrap();
+        assert_eq!(result[0], "user1");
+        assert_eq!(result[1], "user2");
+    }
+
+    #[test]
+    fn get_certs() {
         let db = Database::new();
 
         let result = db.get_certs("user1".to_string()).unwrap();
