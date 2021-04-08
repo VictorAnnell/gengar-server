@@ -13,12 +13,9 @@ The server back-end to the [VaccMe mobile application] written in Rust for the [
 
 1. Install Rust using [rustup].
 
-2. Install the system libraries needed to interface with MySQL. See [here][backend_installation] for more information.
+2. Clone this repository.
 
-3. Clone this repository.
-
-4. Create a `.env` file in the repository's root directory, and add the connection details for
-	 your databases.
+3. Create a `.env` file in the repository's root directory, and add the connection details for your databases.
 
 	 *Note:* If you set up MySQL manually and didn't specify the MySQL user to be one with elevated
 	 permissions, you'll want to run a command like ```mysql -c "GRANT ALL ON
@@ -37,14 +34,14 @@ The server back-end to the [VaccMe mobile application] written in Rust for the [
 	$ docker-compose stop
 	```
 
-	To stop and remove the container:
+	To stop and remove the container and the associated docker volume:
 
 	```shell
-	$ docker-compose down
+	$ docker-compose down -v
 	```
 	See [.env.sample](.env.sample) for an example that works with this docker setup.
 
-5. With this done try running the test suite to confirm everything works:
+4. With this done try running the test suite to confirm everything works:
 	```
 	$ cargo test
 	```
@@ -52,7 +49,6 @@ The server back-end to the [VaccMe mobile application] written in Rust for the [
 > Instructions taken in large part from [diesel-rs]
 
 [rustup]: https://rustup.rs/
-[backend_installation]:https://github.com/diesel-rs/diesel/blob/master/guide_drafts/backend_installation.md
 [Docker]: https://www.docker.com/
 [Docker Compose]: https://docs.docker.com/compose/install/
 [diesel-rs]: https://github.com/diesel-rs/diesel/blob/master/CONTRIBUTING.md
