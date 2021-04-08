@@ -7,6 +7,7 @@
 - [ ] Documentation of the code has been done
 - [ ] Labels are correctly used
 - [ ] Issues solved by this pull request have been linked
+- [ ] Projects associated with this pull request have been linked
 - [ ] Added unit tests with new implementations (if any)
 
 ## Optional
@@ -22,6 +23,7 @@
 - [ ] Code is correctly documented
 - [ ] Labels are correctly used
 - [ ] Issues solved by this pull request have been linked
+- [ ] Projects associated with this pull request have been linked
 - [ ] Unit tests are included with new implementations (if any)
 
 ### Finally
