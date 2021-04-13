@@ -63,7 +63,7 @@ The server back-end to the [VaccMe mobile application][] written in Rust for the
 
 5. With this done try running the test suite to confirm everything works:
 
-   ```shell
+   ```
    cargo test
    ```
 
