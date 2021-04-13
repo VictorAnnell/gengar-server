@@ -1,7 +1,8 @@
 //! This is the gengar module.
 use dotenv::dotenv;
 use mysql::{prelude::Queryable, Pool};
-use std::env;
+use std::{env, net::ToSocketAddrs};
+use warp::{Filter, Reply};
 
 /// Gengar user and vaccine certificate database.
 pub struct Database {
@@ -49,6 +50,24 @@ impl Database {
             username
         ))
     }
+}
+
+pub async fn start_server() {
+    dotenv().ok();
+    let server_url = env::var("SERVER_URL")
+        .expect("SERVER_URL must be set")
+        .to_socket_addrs()
+        .unwrap()
+        .next()
+        .unwrap();
+    let filter = init_api();
+    warp::serve(filter).run(server_url).await;
+}
+
+fn init_api() -> warp::filters::BoxedFilter<(impl Reply,)> {
+    warp::path!("hello" / String)
+        .map(|name| format!("Hello, {}!", name))
+        .boxed()
 }
 
 // Unit tests
