@@ -1,4 +1,6 @@
-//! Example of a main binary for gengar module
-fn main() {
-    println!("Hello, world!");
+use gengar::*;
+
+#[tokio::main]
+async fn main() {
+    start_server().await;
 }

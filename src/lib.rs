@@ -4,7 +4,10 @@ use mysql::{prelude::Queryable, Pool};
 use std::{env, net::ToSocketAddrs};
 use warp::{Filter, Reply};
 
+pub mod handler;
 /// Gengar user and vaccine certificate database.
+
+#[derive(Clone)]
 pub struct Database {
     pool: Pool,
 }
@@ -36,38 +39,41 @@ impl Database {
     /// Returns all users in the database.  
     /// Note: function might be removed in future version.
     pub fn get_users(&self) -> mysql::Result<Vec<String>> {
-        self.pool.get_conn()?.query("SELECT UserName FROM Users")
+        self.pool.get_conn()?.query("SELECT name FROM users")
     }
 
     /// Returns all vaccination certificates associated with `username`.
     pub fn get_certs(&self, username: String) -> mysql::Result<Vec<String>> {
         self.pool.get_conn()?.query(format!(
-            r"SELECT VaccineName
-                FROM UserVaccine
-                JOIN Users ON Users.UserID = UserVaccine.UserID
-                JOIN Vaccines ON Vaccines.VaccineID = UserVaccine.VaccineID
-                WHERE UserName = '{}'",
+            r"SELECT certs FROM users where name = '{}';",
             username
         ))
     }
 }
 
+pub fn init_db() -> Database {
+    Database::new()
+}
+
 pub async fn start_server() {
     dotenv().ok();
+
     let server_url = env::var("SERVER_URL")
         .expect("SERVER_URL must be set")
         .to_socket_addrs()
         .unwrap()
         .next()
         .unwrap();
-    let filter = init_api();
-    warp::serve(filter).run(server_url).await;
-}
 
-fn init_api() -> warp::filters::BoxedFilter<(impl Reply,)> {
-    warp::path!("hello" / String)
-        .map(|name| format!("Hello, {}!", name))
-        .boxed()
+    let db = init_db();
+    let route = init_route(db);
+
+    warp::serve(route).run(server_url).await;
+}
+//GET example.org/usercert/:username 
+fn init_route(db: Database) -> warp::filters::BoxedFilter<(impl Reply,)> {
+        warp::path!("usercert")
+        .and(handler::usercert_handler(db.clone())).boxed()
 }
 
 // Unit tests
