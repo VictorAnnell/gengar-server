@@ -39,13 +39,17 @@ impl Database {
     /// Returns all users in the database.  
     /// Note: function might be removed in future version.
     pub fn get_users(&self) -> mysql::Result<Vec<String>> {
-        self.pool.get_conn()?.query("SELECT name FROM users")
+        self.pool.get_conn()?.query("SELECT GoogleUserID FROM Users")
     }
 
     /// Returns all vaccination certificates associated with `username`.
     pub fn get_certs(&self, username: String) -> mysql::Result<Vec<String>> {
         self.pool.get_conn()?.query(format!(
-            r"SELECT certs FROM users where name = '{}';",
+            r"SELECT VaccineName
+            FROM UserVaccine
+            JOIN Users ON Users.UserID = UserVaccine.UserID
+            JOIN Vaccines ON Vaccines.VaccineID = UserVaccine.VaccineID
+            WHERE GoogleUserID = '{}';",
             username
         ))
     }
@@ -91,17 +95,20 @@ mod tests {
         let db = Database::new();
 
         let result = db.get_users().unwrap();
-        assert_eq!(result[0], "user1");
-        assert_eq!(result[1], "user2");
+        assert_eq!(result[0], "234385785823438578589");
+        assert_eq!(result[1], "418446744073709551615");
     }
 
     #[test]
     fn get_certs() {
         let db = Database::new();
 
-        let result = db.get_certs("user1".to_string()).unwrap();
+        let result = db.get_certs("234385785823438578589".to_string()).unwrap();
         assert_eq!(result[0], "cert1");
         assert_eq!(result[1], "cert2");
+
+        let result = db.get_certs("418446744073709551615".to_string()).unwrap();
+        assert_eq!(result[0], "cert2");
 
         let result = db.get_certs("nonexistant_user".to_string()).unwrap();
         assert_eq!(result.len(), 0);

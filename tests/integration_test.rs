@@ -6,7 +6,7 @@ use gengar::Database;
 fn test_print_certs() {
     let db = Database::new();
 
-    let result = db.get_certs("user1".to_string()).unwrap();
+    let result = db.get_certs("234385785823438578589".to_string()).unwrap();
     assert_eq!(result[0], "cert1");
     assert_eq!(result[1], "cert2");
     for cert in result {
