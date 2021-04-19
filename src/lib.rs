@@ -53,6 +53,30 @@ impl Database {
             username
         ))
     }
+
+    //NOT WORKING - problem with dates
+    pub fn get_user_data(&self, googleuserid: String) -> mysql::Result<Vec<mysql::Value>> {
+        self.pool.get_conn()?.query(format!(
+            r"SELECT VaccineName, RegisterDate, ExpirationDate
+            FROM UserVaccine
+            JOIN Users ON Users.UserID = UserVaccine.UserID
+            JOIN Vaccines ON Vaccines.VaccineID = UserVaccine.VaccineID
+            WHERE GoogleUserID = 234385785823438578589; = '{}';",
+            googleuserid
+        ))
+    }
+
+    //NOT WORKING
+    pub fn get_user_dates(&self, googleuserid: String) -> mysql::Result<Vec<mysql::chrono::NaiveDate>> {
+        self.pool.get_conn()?.query(format!(
+            r"SELECT RegisterDate, ExpirationDate
+            FROM UserVaccine
+            JOIN Users ON Users.UserID = UserVaccine.UserID
+            JOIN Vaccines ON Vaccines.VaccineID = UserVaccine.VaccineID
+            WHERE GoogleUserID = 234385785823438578589; = '{}';",
+            googleuserid
+        ))
+    }
 }
 
 pub fn init_db() -> Database {
@@ -70,14 +94,14 @@ pub async fn start_server() {
         .unwrap();
 
     let db = init_db();
-    let route = init_route(db);
 
+    let route = init_route(db);
     warp::serve(route).run(server_url).await;
 }
-//GET example.org/usercert/:username 
+//GET example.org/usercert/:googleuserid 
 fn init_route(db: Database) -> warp::filters::BoxedFilter<(impl Reply,)> {
-        warp::path!("usercert")
-        .and(handler::usercert_handler(db.clone())).boxed()
+        warp::path!("usercert" / String)
+        .map(move |googleuserid: String| handler::usercert_handler(db.clone(), googleuserid)).boxed()
 }
 
 // Unit tests
