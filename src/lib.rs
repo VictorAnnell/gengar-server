@@ -96,7 +96,11 @@ pub async fn start_server() {
     let db = init_db();
 
     let route = init_route(db);
-    warp::serve(route).run(server_url).await;
+    warp::serve(route)
+        .tls()
+        .cert_path("tls/localhost.crt")
+        .key_path("tls/localhost.key")
+        .run(server_url).await;
 }
 //GET example.org/usercert/:googleuserid 
 fn init_route(db: Database) -> warp::filters::BoxedFilter<(impl Reply,)> {
