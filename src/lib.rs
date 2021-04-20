@@ -103,10 +103,14 @@ pub async fn start_server() {
     let db = init_db();
 
     let route = init_route(db);
-
-//  let route = route_get_dates(db);
     
-    warp::serve(route).run(server_url).await;
+//  let route = route_get_dates(db);
+
+    warp::serve(route)
+        .tls()
+        .cert_path("tls/localhost.crt")
+        .key_path("tls/localhost.key")
+        .run(server_url).await;
 }
 
 //GET example.org/usercert/:googleuserid 
