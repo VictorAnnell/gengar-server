@@ -74,7 +74,7 @@ impl Database {
     }
 
     //NOT WORKING -- see date
-    pub fn get_user_dates(&self, googleuserid: String) -> mysql::Result<Vec<mysql::chrono::NaiveDate>> {
+    pub fn get_user_dates(&self, googleuserid: String) -> mysql::Result<Vec<(mysql::chrono::NaiveDate, mysql::chrono::NaiveDate)>> {
         self.pool.get_conn()?.query(format!(
             r"SELECT RegisterDate, ExpirationDate
             FROM UserVaccine
@@ -164,6 +164,7 @@ mod tests {
 
         let result = db.get_user_dates(String::from("234385785823438578589")).unwrap();
     
-        assert_eq!(result[0].to_string(), String::from("sdaas"));
+        assert_eq!(result[0].0.to_string(), String::from("1988-12-30"));
+        assert_eq!(result[0].1.to_string(), String::from("2022-03-30"));
     }
 }
