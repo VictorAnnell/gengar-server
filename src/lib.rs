@@ -7,6 +7,13 @@ use warp::{Filter, Reply};
 pub mod handler;
 /// Gengar user and vaccine certificate database.
 
+/*
+pub struct UserData {
+    certificate: String,
+    registerdate: mysql::Value,
+    expirationdate: mysql::Value,
+}*/
+
 #[derive(Clone)]
 pub struct Database {
     pool: Pool,
@@ -61,19 +68,19 @@ impl Database {
             FROM UserVaccine
             JOIN Users ON Users.UserID = UserVaccine.UserID
             JOIN Vaccines ON Vaccines.VaccineID = UserVaccine.VaccineID
-            WHERE GoogleUserID = 234385785823438578589; = '{}';",
+            WHERE GoogleUserID = '{}';",
             googleuserid
         ))
     }
 
-    //NOT WORKING
+    //NOT WORKING -- see date
     pub fn get_user_dates(&self, googleuserid: String) -> mysql::Result<Vec<mysql::chrono::NaiveDate>> {
         self.pool.get_conn()?.query(format!(
             r"SELECT RegisterDate, ExpirationDate
             FROM UserVaccine
             JOIN Users ON Users.UserID = UserVaccine.UserID
             JOIN Vaccines ON Vaccines.VaccineID = UserVaccine.VaccineID
-            WHERE GoogleUserID = 234385785823438578589; = '{}';",
+            WHERE GoogleUserID = '{}';",
             googleuserid
         ))
     }
@@ -96,13 +103,23 @@ pub async fn start_server() {
     let db = init_db();
 
     let route = init_route(db);
+
+//  let route = route_get_dates(db);
+    
     warp::serve(route).run(server_url).await;
 }
+
 //GET example.org/usercert/:googleuserid 
 fn init_route(db: Database) -> warp::filters::BoxedFilter<(impl Reply,)> {
         warp::path!("usercert" / String)
         .map(move |googleuserid: String| handler::usercert_handler(db.clone(), googleuserid)).boxed()
 }
+
+//fn route_get_dates(db: Database) -> warp::filters::BoxedFilter<(impl Reply,)> {
+//    warp::path!("usercert" / String)
+//    .map(move |googleuserid: String| handler::userdate_handler(db.clone(), googleuserid)).boxed()
+//}
+
 
 // Unit tests
 #[cfg(test)]
@@ -136,5 +153,13 @@ mod tests {
 
         let result = db.get_certs("nonexistant_user".to_string()).unwrap();
         assert_eq!(result.len(), 0);
+    }
+    #[test]
+    fn get_user_dates() {
+        let db = Database::new();
+
+        let result = db.get_user_dates(String::from("234385785823438578589")).unwrap();
+    
+        assert_eq!(result[0].to_string(), String::from("sdaas"));
     }
 }

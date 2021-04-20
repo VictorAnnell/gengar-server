@@ -57,7 +57,19 @@ version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1374191e2dd25f9ae02e3aa95041ed5d747fc77b3c102b49fe2dd9a8117a6244"
 dependencies = [
- "num-bigint",
+ "num-bigint 0.2.6",
+ "num-integer",
+ "num-traits",
+ "serde",
+]
+
+[[package]]
+name = "bigdecimal"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cc403c26e6b03005522e6e8053384c4e881dfe5b2bf041c0c2c49be33d64a539"
+dependencies = [
+ "num-bigint 0.3.2",
  "num-integer",
  "num-traits",
  "serde",
@@ -392,6 +404,7 @@ version = "0.1.0"
 dependencies = [
  "dotenv",
  "mysql",
+ "mysql_common 0.26.0",
  "serde",
  "serde_json",
  "tokio",
@@ -758,7 +771,7 @@ dependencies = [
  "io-enum",
  "libc",
  "lru",
- "mysql_common",
+ "mysql_common 0.24.1",
  "named_pipe",
  "native-tls",
  "nix",
@@ -778,7 +791,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "de63b87a5f24c5db252418a6f04abb2f62823bd838dc9b1d7fdb8ae972ef76cf"
 dependencies = [
  "base64 0.12.3",
- "bigdecimal",
+ "bigdecimal 0.1.2",
  "bitflags",
  "byteorder",
  "bytes 0.5.6",
@@ -786,7 +799,7 @@ dependencies = [
  "flate2",
  "lazy_static",
  "lexical",
- "num-bigint",
+ "num-bigint 0.2.6",
  "num-traits",
  "rand 0.7.3",
  "regex",
@@ -794,7 +807,36 @@ dependencies = [
  "serde",
  "serde_json",
  "sha1",
- "sha2",
+ "sha2 0.8.2",
+ "time 0.2.26",
+ "twox-hash",
+ "uuid",
+]
+
+[[package]]
+name = "mysql_common"
+version = "0.26.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f3694c35738725021e85c7b644b94bdab050d4ea6acca2b5624287f41e2abc5a"
+dependencies = [
+ "base64 0.13.0",
+ "bigdecimal 0.2.0",
+ "bitflags",
+ "byteorder",
+ "bytes 1.0.1",
+ "chrono",
+ "flate2",
+ "lazy_static",
+ "lexical",
+ "num-bigint 0.3.2",
+ "num-traits",
+ "rand 0.8.3",
+ "regex",
+ "rust_decimal",
+ "serde",
+ "serde_json",
+ "sha1",
+ "sha2 0.9.3",
  "time 0.2.26",
  "twox-hash",
  "uuid",
@@ -853,6 +895,17 @@ name = "num-bigint"
 version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "090c7f9998ee0ff65aa5b723e4009f7b217707f1fb5ea551329cc4d6231fb304"
+dependencies = [
+ "autocfg",
+ "num-integer",
+ "num-traits",
+]
+
+[[package]]
+name = "num-bigint"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7d0a3d5e207573f948a9e5376662aa743a2ea13f7c50a554d7af443a73fbfeba"
 dependencies = [
  "autocfg",
  "num-integer",
@@ -1332,6 +1385,19 @@ dependencies = [
  "digest 0.8.1",
  "fake-simd",
  "opaque-debug 0.2.3",
+]
+
+[[package]]
+name = "sha2"
+version = "0.9.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fa827a14b29ab7f44778d14a88d3cb76e949c45083f7dbfa507d0cb699dc12de"
+dependencies = [
+ "block-buffer 0.9.0",
+ "cfg-if 1.0.0",
+ "cpuid-bool",
+ "digest 0.9.0",
+ "opaque-debug 0.3.0",
 ]
 
 [[package]]
