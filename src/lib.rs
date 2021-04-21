@@ -9,10 +9,19 @@ pub mod handler;
 
 /*
 pub struct UserData {
+    certificates: [Cert_Data],
+}
+
+// "['cert1', '1988-12-30', '2022-03-30'"
+pub struct Cert_Data {
     certificate: String,
-    registerdate: mysql::Value,
-    expirationdate: mysql::Value,
-}*/
+    registerdate: NaiveDate,
+    expirationdate: NaiveDate,
+}
+
+
+*/
+
 
 #[derive(Clone)]
 pub struct Database {
@@ -102,9 +111,11 @@ pub async fn start_server() {
 
     let db = init_db();
 
-    let route = init_route(db);
+//  let route = user_certs_route(db);
     
 //  let route = route_get_dates(db);
+
+    let route = post_token_route(db);
 
     warp::serve(route)
         .tls()
@@ -114,9 +125,17 @@ pub async fn start_server() {
 }
 
 //GET example.org/usercert/:googleuserid 
-fn init_route(db: Database) -> warp::filters::BoxedFilter<(impl Reply,)> {
+fn user_certs_route(db: Database) -> warp::filters::BoxedFilter<(impl Reply,)> {
         warp::path!("usercert" / String)
         .map(move |googleuserid: String| handler::usercert_handler(db.clone(), googleuserid)).boxed()
+}
+
+//POST example.org/login
+fn post_token_route(db: Database) -> warp::filters::BoxedFilter<(impl Reply,)> {
+    warp::path!("login")
+    .and(warp::post())
+    .and(warp::body::json())
+    .map(move |token: String| handler::usercert_handler(db.clone(), token)).boxed()
 }
 
 //fn route_get_dates(db: Database) -> warp::filters::BoxedFilter<(impl Reply,)> {
