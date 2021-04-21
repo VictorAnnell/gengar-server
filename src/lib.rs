@@ -4,23 +4,9 @@ use mysql::{Pool, chrono::NaiveDate, prelude::Queryable};
 use std::{env, net::ToSocketAddrs};
 use warp::{Filter, Reply};
 use serde::{Serialize, Deserialize};
-use std::iter::Map;
 
 pub mod handler;
-/// Gengar user and vaccine certificate database.
 
-/*
-pub struct UserData {
-    certificates: [Cert_Data],
-}
-
-// "['cert1', '1988-12-30', '2022-03-30'"
-pub struct Cert_Data {
-    certificate: String,
-    registerdate: NaiveDate,
-    expirationdate: NaiveDate,
-}
-*/
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Token {
     token: String,
@@ -38,6 +24,7 @@ pub struct CertData {
     expirationdate: NaiveDate,
 }
 
+/// Gengar user and vaccine certificate database.
 #[derive(Clone)]
 pub struct Database {
     pool: Pool,
@@ -97,7 +84,7 @@ impl Database {
         ))?;
         Ok( 
             UserData {
-                certificates: row.into_iter().map(|x| row_to_CertData(x)).collect(),
+                certificates: row.into_iter().map(row_to_certdata).collect(),
             }
         )
     }
@@ -114,7 +101,7 @@ impl Database {
     }
 }
 
-pub fn row_to_CertData(tuple: (String, NaiveDate, NaiveDate)) -> CertData {
+pub fn row_to_certdata(tuple: (String, NaiveDate, NaiveDate)) -> CertData {
     CertData {
         name: tuple.0,
         registerdate: tuple.1,
@@ -143,8 +130,6 @@ pub async fn start_server() {
                 .or(user_data_route(db.clone()))
                 .or(post_token_route());
 
-//  let route = route_get_dates(db);
-
     warp::serve(route)
         .tls()
         .cert_path("tls/localhost.crt")
@@ -163,7 +148,7 @@ fn post_token_route() -> warp::filters::BoxedFilter<(impl Reply,)> {
     warp::path!("login")
     .and(warp::post())
     .and(warp::body::json())
-    .map(move |token: Token| handler::post_token_handler(token)).boxed()
+    .map(handler::post_token_handler).boxed()
 }
 
 //GET example.org/userdata/:googleuserid 
@@ -171,12 +156,6 @@ fn user_data_route(db: Database) -> warp::filters::BoxedFilter<(impl Reply,)> {
     warp::path!("userdata" / String)
     .map(move |googleuserid: String| handler::userdata_handler(db.clone(), googleuserid)).boxed()
 }
-
-//fn route_get_dates(db: Database) -> warp::filters::BoxedFilter<(impl Reply,)> {
-//    warp::path!("usercert" / String)
-//    .map(move |googleuserid: String| handler::userdate_handler(db.clone(), googleuserid)).boxed()
-//}
-
 
 // Unit tests
 #[cfg(test)]
