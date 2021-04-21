@@ -1,4 +1,5 @@
 # Gengar Server
+![rust ci status](https://github.com/victor-021/gengar-server/actions/workflows/rust.yml/badge.svg)
 > VaccMe server back-end written in Rust by group Gengar
 
 The server back-end to the [VaccMe mobile application][] written in Rust for the
