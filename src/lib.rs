@@ -3,6 +3,8 @@ use dotenv::dotenv;
 use mysql::{Pool, chrono::NaiveDate, prelude::Queryable};
 use std::{env, net::ToSocketAddrs};
 use warp::{Filter, Reply};
+use serde::{Serialize, Deserialize};
+use std::iter::Map;
 
 pub mod handler;
 /// Gengar user and vaccine certificate database.
@@ -18,10 +20,23 @@ pub struct Cert_Data {
     registerdate: NaiveDate,
     expirationdate: NaiveDate,
 }
-
-
 */
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Token {
+    token: String,
+}
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct UserData {
+    certificates: Vec<CertData>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct CertData {
+    name: String,
+    registerdate: NaiveDate,
+    expirationdate: NaiveDate,
+}
 
 #[derive(Clone)]
 pub struct Database {
@@ -70,15 +85,21 @@ impl Database {
         ))
     }
 
-    pub fn get_user_data(&self, googleuserid: String) -> mysql::Result<Vec<(String, NaiveDate, NaiveDate)>> {
-        self.pool.get_conn()?.query(format!(
+    pub fn get_user_data(&self, googleuserid: String) -> mysql::Result<UserData> {
+        let mut conn = self.pool.get_conn()?;
+        let row: Vec<(String, NaiveDate, NaiveDate)> = conn.query(format!(
             r"SELECT VaccineName, RegisterDate, ExpirationDate
             FROM UserVaccine
             JOIN Users ON Users.UserID = UserVaccine.UserID
             JOIN Vaccines ON Vaccines.VaccineID = UserVaccine.VaccineID
             WHERE GoogleUserID = '{}';",
             googleuserid
-        ))
+        ))?;
+        Ok( 
+            UserData {
+                certificates: row.into_iter().map(|x| row_to_CertData(x)).collect(),
+            }
+        )
     }
 
     pub fn get_user_dates(&self, googleuserid: String) -> mysql::Result<Vec<(NaiveDate, NaiveDate)>> {
@@ -90,6 +111,14 @@ impl Database {
             WHERE GoogleUserID = '{}';",
             googleuserid
         ))
+    }
+}
+
+pub fn row_to_CertData(tuple: (String, NaiveDate, NaiveDate)) -> CertData {
+    CertData {
+        name: tuple.0,
+        registerdate: tuple.1,
+        expirationdate: tuple.2,
     }
 }
 
@@ -109,11 +138,12 @@ pub async fn start_server() {
 
     let db = init_db();
 
-//  let route = user_certs_route(db);
-    
-//  let route = route_get_dates(db);
+    let route = warp::any()
+                .and(user_certs_route(db.clone()))
+                .or(user_data_route(db.clone()))
+                .or(post_token_route());
 
-    let route = post_token_route();
+//  let route = route_get_dates(db);
 
     warp::serve(route)
         .tls()
@@ -133,7 +163,13 @@ fn post_token_route() -> warp::filters::BoxedFilter<(impl Reply,)> {
     warp::path!("login")
     .and(warp::post())
     .and(warp::body::json())
-    .map(move |token: String| handler::post_token_handler(token)).boxed()
+    .map(move |token: Token| handler::post_token_handler(token)).boxed()
+}
+
+//GET example.org/userdata/:googleuserid 
+fn user_data_route(db: Database) -> warp::filters::BoxedFilter<(impl Reply,)> {
+    warp::path!("userdata" / String)
+    .map(move |googleuserid: String| handler::userdata_handler(db.clone(), googleuserid)).boxed()
 }
 
 //fn route_get_dates(db: Database) -> warp::filters::BoxedFilter<(impl Reply,)> {
@@ -189,14 +225,15 @@ mod tests {
     fn get_user_data() {
         let db = Database::new();
 
-        let result = db.get_user_data(String::from("234385785823438578589")).unwrap();
+        let userdata = db.get_user_data(String::from("234385785823438578589")).unwrap();
 
-        assert_eq!(result[0].0.to_string(), String::from("cert1"));
-        assert_eq!(result[0].1.to_string(), String::from("1988-12-30"));
-        assert_eq!(result[0].2.to_string(), String::from("2022-03-30"));
+        let result = userdata.certificates;
+        assert_eq!(result[0].name.to_string(), String::from("cert1"));
+        assert_eq!(result[0].registerdate.to_string(), String::from("1988-12-30"));
+        assert_eq!(result[0].expirationdate.to_string(), String::from("2022-03-30"));
 
-        assert_eq!(result[1].0.to_string(), String::from("cert2"));
-        assert_eq!(result[1].1.to_string(), String::from("2015-02-19"));
-        assert_eq!(result[1].2.to_string(), String::from("2021-06-02"));
+        assert_eq!(result[1].name.to_string(), String::from("cert2"));
+        assert_eq!(result[1].registerdate.to_string(), String::from("2015-02-19"));
+        assert_eq!(result[1].expirationdate.to_string(), String::from("2021-06-02"));
     }
 }
