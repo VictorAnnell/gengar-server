@@ -1,6 +1,6 @@
 //! This is the gengar module.
 use dotenv::dotenv;
-use mysql::{prelude::Queryable, Pool};
+use mysql::{Pool, chrono::NaiveDate, prelude::Queryable};
 use std::{env, net::ToSocketAddrs};
 use warp::{Filter, Reply};
 
@@ -70,8 +70,7 @@ impl Database {
         ))
     }
 
-    //NOT WORKING - problem with dates
-    pub fn get_user_data(&self, googleuserid: String) -> mysql::Result<Vec<mysql::Value>> {
+    pub fn get_user_data(&self, googleuserid: String) -> mysql::Result<Vec<(String, NaiveDate, NaiveDate)>> {
         self.pool.get_conn()?.query(format!(
             r"SELECT VaccineName, RegisterDate, ExpirationDate
             FROM UserVaccine
@@ -82,8 +81,7 @@ impl Database {
         ))
     }
 
-    //NOT WORKING -- see date
-    pub fn get_user_dates(&self, googleuserid: String) -> mysql::Result<Vec<mysql::chrono::NaiveDate>> {
+    pub fn get_user_dates(&self, googleuserid: String) -> mysql::Result<Vec<(NaiveDate, NaiveDate)>> {
         self.pool.get_conn()?.query(format!(
             r"SELECT RegisterDate, ExpirationDate
             FROM UserVaccine
@@ -183,6 +181,22 @@ mod tests {
 
         let result = db.get_user_dates(String::from("234385785823438578589")).unwrap();
     
-        assert_eq!(result[0].to_string(), String::from("sdaas"));
+        assert_eq!(result[0].0.to_string(), String::from("1988-12-30"));
+        assert_eq!(result[0].1.to_string(), String::from("2022-03-30"));
+    }
+
+    #[test]
+    fn get_user_data() {
+        let db = Database::new();
+
+        let result = db.get_user_data(String::from("234385785823438578589")).unwrap();
+
+        assert_eq!(result[0].0.to_string(), String::from("cert1"));
+        assert_eq!(result[0].1.to_string(), String::from("1988-12-30"));
+        assert_eq!(result[0].2.to_string(), String::from("2022-03-30"));
+
+        assert_eq!(result[1].0.to_string(), String::from("cert2"));
+        assert_eq!(result[1].1.to_string(), String::from("2015-02-19"));
+        assert_eq!(result[1].2.to_string(), String::from("2021-06-02"));
     }
 }
