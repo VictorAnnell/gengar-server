@@ -7,6 +7,6 @@ pub fn usercert_handler(db: Database, googleuserid: String) -> String {
     serde_json::to_string(&reply).unwrap()
 }
 
-pub fn post_token_route(db: Database, token: String) -> String {
+pub fn post_token_handler(token: String) -> String {
     token
 }

@@ -113,7 +113,7 @@ pub async fn start_server() {
     
 //  let route = route_get_dates(db);
 
-    let route = post_token_route(db);
+    let route = post_token_route();
 
     warp::serve(route)
         .tls()
@@ -129,11 +129,11 @@ fn user_certs_route(db: Database) -> warp::filters::BoxedFilter<(impl Reply,)> {
 }
 
 //POST example.org/login
-fn post_token_route(db: Database) -> warp::filters::BoxedFilter<(impl Reply,)> {
+fn post_token_route() -> warp::filters::BoxedFilter<(impl Reply,)> {
     warp::path!("login")
     .and(warp::post())
     .and(warp::body::json())
-    .map(move |token: String| handler::usercert_handler(db.clone(), token)).boxed()
+    .map(move |token: String| handler::post_token_handler(token)).boxed()
 }
 
 //fn route_get_dates(db: Database) -> warp::filters::BoxedFilter<(impl Reply,)> {
