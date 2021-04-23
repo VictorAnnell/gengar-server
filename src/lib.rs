@@ -145,7 +145,7 @@ fn user_certs_route(db: Database) -> warp::filters::BoxedFilter<(impl Reply,)> {
 
 //POST example.org/login
 fn post_token_route() -> warp::filters::BoxedFilter<(impl Reply,)> {
-    warp::path!("login")
+    warp::path("login")
     .and(warp::post())
     .and(warp::body::json())
     .map(handler::post_token_handler).boxed()
