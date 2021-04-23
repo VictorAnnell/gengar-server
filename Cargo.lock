@@ -403,6 +403,7 @@ name = "gengar"
 version = "0.1.0"
 dependencies = [
  "dotenv",
+ "futures",
  "mysql",
  "mysql_common 0.26.0",
  "serde",

@@ -4,6 +4,7 @@ use mysql::{Pool, chrono::NaiveDate, prelude::Queryable};
 use std::{env, net::ToSocketAddrs};
 use warp::{Filter, Reply};
 use serde::{Serialize, Deserialize};
+use futures::{FutureExt, StreamExt};
 
 pub mod handler;
 
@@ -128,7 +129,8 @@ pub async fn start_server() {
     let route = warp::any()
                 .and(user_certs_route(db.clone()))
                 .or(user_data_route(db.clone()))
-                .or(post_token_route());
+                .or(post_token_route())
+                .or(websocket_route());
 
     warp::serve(route)
         .tls()
@@ -156,6 +158,15 @@ fn user_data_route(db: Database) -> warp::filters::BoxedFilter<(impl Reply,)> {
     warp::path!("userdata" / String)
     .map(move |googleuserid: String| handler::userdata_handler(db.clone(), googleuserid)).boxed()
 }
+
+fn websocket_route() -> warp::filters::BoxedFilter<(impl Reply,)> {
+    warp::path("echo")
+    // The `ws()` filter will prepare the Websocket handshake.
+    .and(warp::ws())
+    .map(handler::websocket_handler).boxed()
+}
+
+
 
 // Unit tests
 #[cfg(test)]
