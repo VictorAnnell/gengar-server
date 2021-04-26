@@ -4,20 +4,23 @@ use mysql::{Pool, chrono::NaiveDate, prelude::Queryable};
 use std::{env, net::ToSocketAddrs};
 use warp::{Filter, Reply};
 use serde::{Serialize, Deserialize};
-use futures::{FutureExt, StreamExt};
 
 pub mod handler;
 
+/// Google user token information.
+// TODO: change to reflect token information to be recieved from client
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Token {
     token: String,
 }
 
+/// Information about one or more certificates associated with a single user.
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct UserData {
     certificates: Vec<CertData>,
 }
 
+/// Information for a single certificate associated with a user.
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct CertData {
     name: String,
@@ -73,6 +76,7 @@ impl Database {
         ))
     }
 
+    /// Returns all vaccination certificates and their created and expiery dates associated with `username`.
     pub fn get_user_data(&self, googleuserid: String) -> mysql::Result<UserData> {
         let mut conn = self.pool.get_conn()?;
         let row: Vec<(String, NaiveDate, NaiveDate)> = conn.query(format!(
@@ -90,6 +94,7 @@ impl Database {
         )
     }
 
+    /// Returns the creating and expiration dates of all vaccination certificates associated with `username`.
     pub fn get_user_dates(&self, googleuserid: String) -> mysql::Result<Vec<(NaiveDate, NaiveDate)>> {
         self.pool.get_conn()?.query(format!(
             r"SELECT RegisterDate, ExpirationDate
@@ -102,6 +107,8 @@ impl Database {
     }
 }
 
+/// Converts one row from the database as returned by [`get_user_data`](Database::get_user_data())
+/// into a [`CertData`] struct.
 pub fn row_to_certdata(tuple: (String, NaiveDate, NaiveDate)) -> CertData {
     CertData {
         name: tuple.0,
@@ -110,6 +117,7 @@ pub fn row_to_certdata(tuple: (String, NaiveDate, NaiveDate)) -> CertData {
     }
 }
 
+/// Launch server and connects to database as defined by settings in file `.env`.
 pub async fn start_server() {
     dotenv().ok();
 
@@ -141,6 +149,7 @@ fn user_certs_route(db: Database) -> warp::filters::BoxedFilter<(impl Reply,)> {
         .map(move |googleuserid: String| handler::usercert_handler(db.clone(), googleuserid)).boxed()
 }
 
+// TODO: complete google auth route
 //POST example.org/login
 fn post_token_route() -> warp::filters::BoxedFilter<(impl Reply,)> {
     warp::path!("login")
@@ -155,13 +164,13 @@ fn user_data_route(db: Database) -> warp::filters::BoxedFilter<(impl Reply,)> {
     .map(move |googleuserid: String| handler::userdata_handler(db.clone(), googleuserid)).boxed()
 }
 
+// TODO: complete websocket route
 fn websocket_route() -> warp::filters::BoxedFilter<(impl Reply,)> {
     warp::path("echo")
     // The `ws()` filter will prepare the Websocket handshake.
     .and(warp::ws())
     .map(handler::websocket_handler).boxed()
 }
-
 
 
 // Unit tests
