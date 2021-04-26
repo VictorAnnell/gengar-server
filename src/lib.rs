@@ -110,10 +110,6 @@ pub fn row_to_certdata(tuple: (String, NaiveDate, NaiveDate)) -> CertData {
     }
 }
 
-pub fn init_db() -> Database {
-    Database::new()
-}
-
 pub async fn start_server() {
     dotenv().ok();
 
@@ -124,7 +120,7 @@ pub async fn start_server() {
         .next()
         .unwrap();
 
-    let db = init_db();
+    let db = Database::new();
 
     let route = warp::any()
                 .and(user_certs_route(db.clone()))
