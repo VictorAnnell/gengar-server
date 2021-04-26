@@ -1,9 +1,9 @@
 //! This is the gengar module.
 use dotenv::dotenv;
-use mysql::{Pool, chrono::NaiveDate, prelude::Queryable};
+use mysql::{chrono::NaiveDate, prelude::Queryable, Pool};
+use serde::{Deserialize, Serialize};
 use std::{env, net::ToSocketAddrs};
 use warp::{Filter, Reply};
-use serde::{Serialize, Deserialize};
 
 pub mod handler;
 
@@ -61,7 +61,9 @@ impl Database {
     /// Returns all users in the database.  
     /// Note: function might be removed in future version.
     pub fn get_users(&self) -> mysql::Result<Vec<String>> {
-        self.pool.get_conn()?.query("SELECT GoogleUserID FROM Users")
+        self.pool
+            .get_conn()?
+            .query("SELECT GoogleUserID FROM Users")
     }
 
     /// Returns all vaccination certificates associated with `username`.
@@ -87,15 +89,16 @@ impl Database {
             WHERE GoogleUserID = '{}';",
             googleuserid
         ))?;
-        Ok( 
-            UserData {
-                certificates: row.into_iter().map(row_to_certdata).collect(),
-            }
-        )
+        Ok(UserData {
+            certificates: row.into_iter().map(row_to_certdata).collect(),
+        })
     }
 
     /// Returns the creating and expiration dates of all vaccination certificates associated with `username`.
-    pub fn get_user_dates(&self, googleuserid: String) -> mysql::Result<Vec<(NaiveDate, NaiveDate)>> {
+    pub fn get_user_dates(
+        &self,
+        googleuserid: String,
+    ) -> mysql::Result<Vec<(NaiveDate, NaiveDate)>> {
         self.pool.get_conn()?.query(format!(
             r"SELECT RegisterDate, ExpirationDate
             FROM UserVaccine
@@ -131,37 +134,41 @@ pub async fn start_server() {
     let db = Database::new();
 
     let route = warp::any()
-                .and(user_certs_route(db.clone()))
-                .or(user_data_route(db.clone()))
-                .or(post_token_route())
-                .or(websocket_route());
+        .and(user_certs_route(db.clone()))
+        .or(user_data_route(db.clone()))
+        .or(post_token_route())
+        .or(websocket_route());
 
     warp::serve(route)
         .tls()
         .cert_path("tls/localhost.crt")
         .key_path("tls/localhost.key")
-        .run(server_url).await;
+        .run(server_url)
+        .await;
 }
 
-//GET example.org/usercert/:googleuserid 
+//GET example.org/usercert/:googleuserid
 fn user_certs_route(db: Database) -> warp::filters::BoxedFilter<(impl Reply,)> {
-        warp::path!("usercert" / String)
-        .map(move |googleuserid: String| handler::usercert_handler(db.clone(), googleuserid)).boxed()
+    warp::path!("usercert" / String)
+        .map(move |googleuserid: String| handler::usercert_handler(db.clone(), googleuserid))
+        .boxed()
 }
 
 // TODO: complete google auth route
 //POST example.org/login
 fn post_token_route() -> warp::filters::BoxedFilter<(impl Reply,)> {
     warp::path!("login")
-    .and(warp::post())
-    .and(warp::body::json())
-    .map(handler::post_token_handler).boxed()
+        .and(warp::post())
+        .and(warp::body::json())
+        .map(handler::post_token_handler)
+        .boxed()
 }
 
-//GET example.org/userdata/:googleuserid 
+//GET example.org/userdata/:googleuserid
 fn user_data_route(db: Database) -> warp::filters::BoxedFilter<(impl Reply,)> {
     warp::path!("userdata" / String)
-    .map(move |googleuserid: String| handler::userdata_handler(db.clone(), googleuserid)).boxed()
+        .map(move |googleuserid: String| handler::userdata_handler(db.clone(), googleuserid))
+        .boxed()
 }
 
 // TODO: complete websocket route
@@ -171,7 +178,6 @@ fn websocket_route() -> warp::filters::BoxedFilter<(impl Reply,)> {
     .and(warp::ws())
     .map(handler::websocket_handler).boxed()
 }
-
 
 // Unit tests
 #[cfg(test)]
@@ -210,8 +216,10 @@ mod tests {
     fn get_user_dates() {
         let db = Database::new();
 
-        let result = db.get_user_dates(String::from("234385785823438578589")).unwrap();
-    
+        let result = db
+            .get_user_dates(String::from("234385785823438578589"))
+            .unwrap();
+
         assert_eq!(result[0].0.to_string(), String::from("1988-12-30"));
         assert_eq!(result[0].1.to_string(), String::from("2022-03-30"));
     }
@@ -220,15 +228,29 @@ mod tests {
     fn get_user_data() {
         let db = Database::new();
 
-        let userdata = db.get_user_data(String::from("234385785823438578589")).unwrap();
+        let userdata = db
+            .get_user_data(String::from("234385785823438578589"))
+            .unwrap();
 
         let result = userdata.certificates;
         assert_eq!(result[0].name.to_string(), String::from("cert1"));
-        assert_eq!(result[0].registerdate.to_string(), String::from("1988-12-30"));
-        assert_eq!(result[0].expirationdate.to_string(), String::from("2022-03-30"));
+        assert_eq!(
+            result[0].registerdate.to_string(),
+            String::from("1988-12-30")
+        );
+        assert_eq!(
+            result[0].expirationdate.to_string(),
+            String::from("2022-03-30")
+        );
 
         assert_eq!(result[1].name.to_string(), String::from("cert2"));
-        assert_eq!(result[1].registerdate.to_string(), String::from("2015-02-19"));
-        assert_eq!(result[1].expirationdate.to_string(), String::from("2021-06-02"));
+        assert_eq!(
+            result[1].registerdate.to_string(),
+            String::from("2015-02-19")
+        );
+        assert_eq!(
+            result[1].expirationdate.to_string(),
+            String::from("2021-06-02")
+        );
     }
 }
