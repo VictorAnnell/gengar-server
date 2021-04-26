@@ -37,3 +37,31 @@ pub fn websocket_handler(ws: warp::ws::Ws) -> impl Reply {
         })
     })
 }
+
+// Unit tests
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn usercert_handler_test() {
+        let db = Database::new();
+
+        let result = usercert_handler(db.clone(), "234385785823438578589".to_string());
+        assert_eq!(result, "[\"cert1\",\"cert2\"]");
+
+        let result = usercert_handler(db, "fakeuser".to_string());
+        assert_eq!(result, "[]");
+    }
+
+    #[test]
+    fn userdata_handler_test() {
+        let db = Database::new();
+
+        let result = userdata_handler(db.clone(), "234385785823438578589".to_string());
+        assert_eq!(result, "{\"certificates\":[{\"name\":\"cert1\",\"registerdate\":\"1988-12-30\",\"expirationdate\":\"2022-03-30\"},{\"name\":\"cert2\",\"registerdate\":\"2015-02-19\",\"expirationdate\":\"2021-06-02\"}]}");
+
+        let result = userdata_handler(db, "fakeuser".to_string());
+        assert_eq!(result, "{\"certificates\":[]}");
+    }
+}
