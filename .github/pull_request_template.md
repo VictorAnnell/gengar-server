@@ -1,6 +1,6 @@
-# Creator / Commiter
+# Description
 
-## Mandatory
+# Checklist
 
 - [ ] README is up to date
 - [ ] Assigned at least 1 reviewer
@@ -13,19 +13,3 @@
 ## Optional
 
 - [ ] Added integration tests where appropriate
-
-# Reviewer
-
-## Mandatory
-
-- [ ] Commiter has checked all mandatory boxes
-- [ ] README is up to date
-- [ ] Code is correctly documented
-- [ ] Labels are correctly used
-- [ ] Issues solved by this pull request have been linked
-- [ ] Projects associated with this pull request have been linked
-- [ ] Unit tests are included with new implementations (if any)
-
-### Finally
-
-- [ ] Merged repo to master
