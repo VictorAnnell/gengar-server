@@ -1,7 +1,7 @@
 //! This is the gengar module.
 use dotenv::dotenv;
 use mysql::{Pool, chrono::NaiveDate, prelude::Queryable};
-use std::{env, net::ToSocketAddrs};
+use std::{env, net::ToSocketAddrs, convert::Infallible};
 use warp::{Filter, Reply};
 use serde::{Serialize, Deserialize};
 
@@ -101,6 +101,10 @@ impl Database {
     }
 }
 
+fn with_db(db: Database) -> impl Filter<Extract = (Database,), Error = Infallible> + Clone {
+    warp::any().map(move || db.clone())
+}
+
 pub fn row_to_certdata(tuple: (String, NaiveDate, NaiveDate)) -> CertData {
     CertData {
         name: tuple.0,
@@ -151,12 +155,29 @@ fn post_token_route() -> warp::filters::BoxedFilter<(impl Reply,)> {
     .map(handler::post_token_handler).boxed()
 }
 
-//GET example.org/userdata/:googleuserid 
+/*
+curl -X POST \
+-H "Content-type: application/json" \
+-H "Accept: application/json" \
+-d '{"googleuserid":"234385785823438578589"}' \
+"localhost:8000/userdata" 
+*/
 fn user_data_route(db: Database) -> warp::filters::BoxedFilter<(impl Reply,)> {
-    warp::path!("userdata" / String)
-    .map(move |googleuserid: String| handler::userdata_handler(db.clone(), googleuserid)).boxed()
+    warp::path!("userdata")
+    .and(warp::post())
+    .and(warp::body::json())
+    .and(with_db(db))
+    .map(handler::userdata_handler).boxed()
 }
 
+
+// GET example.org/sessionid
+// fn session_id_route() -> warp::filters::BoxedFilter<(impl Reply,)> {
+//    warp::path!("sessionid")
+//    .and(warp::get())
+//    .map(handler::post_session_id).boxed()
+// }
+ 
 // Unit tests
 #[cfg(test)]
 mod tests {
