@@ -68,18 +68,20 @@ impl Database {
 
     /// Returns all vaccination certificates associated with `username`.
     pub fn get_certs(&self, username: String) -> mysql::Result<Vec<String>> {
+        let hashed_username = blake3::hash(username.as_bytes()).to_hex().to_string();
         self.pool.get_conn()?.query(format!(
             r"SELECT VaccineName
             FROM UserVaccine
             JOIN Users ON Users.UserID = UserVaccine.UserID
             JOIN Vaccines ON Vaccines.VaccineID = UserVaccine.VaccineID
             WHERE GoogleUserID = '{}';",
-            username
+            hashed_username
         ))
     }
 
     /// Returns all vaccination certificates and their created and expiery dates associated with `username`.
     pub fn get_user_data(&self, googleuserid: String) -> mysql::Result<UserData> {
+        let hashed_googleuserid = blake3::hash(googleuserid.as_bytes()).to_hex().to_string();
         let mut conn = self.pool.get_conn()?;
         let row: Vec<(String, NaiveDate, NaiveDate)> = conn.query(format!(
             r"SELECT VaccineName, RegisterDate, ExpirationDate
@@ -87,7 +89,7 @@ impl Database {
             JOIN Users ON Users.UserID = UserVaccine.UserID
             JOIN Vaccines ON Vaccines.VaccineID = UserVaccine.VaccineID
             WHERE GoogleUserID = '{}';",
-            googleuserid
+            hashed_googleuserid
         ))?;
         Ok(UserData {
             certificates: row.into_iter().map(row_to_certdata).collect(),
@@ -99,13 +101,14 @@ impl Database {
         &self,
         googleuserid: String,
     ) -> mysql::Result<Vec<(NaiveDate, NaiveDate)>> {
+        let hashed_googleuserid = blake3::hash(googleuserid.as_bytes()).to_hex().to_string();
         self.pool.get_conn()?.query(format!(
             r"SELECT RegisterDate, ExpirationDate
             FROM UserVaccine
             JOIN Users ON Users.UserID = UserVaccine.UserID
             JOIN Vaccines ON Vaccines.VaccineID = UserVaccine.VaccineID
             WHERE GoogleUserID = '{}';",
-            googleuserid
+            hashed_googleuserid
         ))
     }
 }
@@ -194,8 +197,14 @@ mod tests {
         let db = Database::new();
 
         let result = db.get_users().unwrap();
-        assert_eq!(result[0], "234385785823438578589");
-        assert_eq!(result[1], "418446744073709551615");
+        assert_eq!(
+            result[0],
+            "5fa6e51bb84716c9b0ba630712997abb0ac5bd178ef1b2a59c4f64073d07055d"
+        );
+        assert_eq!(
+            result[1],
+            "1170c459c8c96ef276770a88225879153dbe1b3f2810dd53928633bbcd13a955"
+        );
     }
 
     #[test]
