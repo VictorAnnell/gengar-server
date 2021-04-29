@@ -139,12 +139,22 @@ pub async fn start_server() {
         .or(post_token_route())
         .or(websocket_route());
 
-    warp::serve(route)
-        .tls()
-        .cert_path("tls/localhost.crt")
-        .key_path("tls/localhost.key")
-        .run(server_url)
-        .await;
+    let tls = env::var("TLS")
+        .expect("TLS must be set");
+
+    if tls == "true" {
+        warp::serve(route)
+            .tls()
+            .cert_path("tls/localhost.crt")
+            .key_path("tls/localhost.key")
+            .run(server_url)
+            .await;
+    } else {
+        warp::serve(route)
+            .run(server_url)
+            .await;
+    }
+
 }
 
 //GET example.org/usercert/:googleuserid
