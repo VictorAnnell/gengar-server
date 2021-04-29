@@ -4,6 +4,10 @@ use mysql::{chrono::NaiveDate, prelude::Queryable, Pool};
 use serde::{Deserialize, Serialize};
 use std::{env, net::ToSocketAddrs};
 use warp::{Filter, Reply};
+use std::collections::HashMap;
+use std::convert::Infallible;
+use rand::{thread_rng, Rng};
+use rand::distributions::Alphanumeric;
 
 pub mod handler;
 
@@ -12,6 +16,11 @@ pub mod handler;
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Token {
     token: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct QrString {
+    rand_string: String,
 }
 
 /// Information about one or more certificates associated with a single user.
@@ -27,6 +36,8 @@ pub struct CertData {
     registerdate: NaiveDate,
     expirationdate: NaiveDate,
 }
+
+type QrCodes = HashMap<String, String>;
 
 /// Gengar user and vaccine certificate database.
 #[derive(Clone)]
@@ -113,9 +124,24 @@ impl Database {
     }
 }
 
+pub fn generate_qr_string() -> QrString {
+    let rand_string: String = thread_rng()
+    .sample_iter(&Alphanumeric)
+    .take(30)
+    .map(char::from)
+    .collect();
+    QrString {
+        rand_string: rand_string
+    }
+}
+
+fn with_qr_codes(qr_codes: QrCodes) -> impl Filter<Extract = (QrCodes,), Error = Infallible> + Clone {
+    warp::any().map(move || qr_codes.clone())
+}
+
 /// Converts one row from the database as returned by [`get_user_data`](Database::get_user_data())
 /// into a [`CertData`] struct.
-pub fn row_to_certdata(tuple: (String, NaiveDate, NaiveDate)) -> CertData {
+fn row_to_certdata(tuple: (String, NaiveDate, NaiveDate)) -> CertData {
     CertData {
         name: tuple.0,
         registerdate: tuple.1,
@@ -136,11 +162,14 @@ pub async fn start_server() {
 
     let db = Database::new();
 
+    let qr_codes: QrCodes = HashMap::new();
+
     let route = warp::any()
         .and(user_certs_route(db.clone()))
         .or(user_data_route(db.clone()))
         .or(post_token_route())
-        .or(websocket_route());
+        .or(websocket_route())
+        .or(user_get_qr_string_route(qr_codes));
 
     warp::serve(route)
         .tls()
@@ -172,6 +201,15 @@ fn user_data_route(db: Database) -> warp::filters::BoxedFilter<(impl Reply,)> {
     warp::path!("userdata" / String)
         .map(move |googleuserid: String| handler::userdata_handler(db.clone(), googleuserid))
         .boxed()
+}
+
+fn user_get_qr_string_route(qr_codes: HashMap<String,String>) -> warp::filters::BoxedFilter<(impl Reply,)> {
+    warp::path!("getqr")
+    .and(warp::post())
+    .and(warp::body::json())
+    .and(with_qr_codes(qr_codes))
+    .map(handler::get_qr_handler)
+    .boxed()
 }
 
 // TODO: complete websocket route
@@ -262,4 +300,14 @@ mod tests {
             String::from("2021-06-02")
         );
     }
+
+    #[test]
+    fn generate_qr_string_test() {
+        let rand_1 = generate_qr_string();
+        let rand_2 = generate_qr_string();
+        assert_eq!(rand_1.rand_string.len(),rand_2.rand_string.len());
+        assert_ne!(rand_1.rand_string, rand_2.rand_string);
+    }
+
+    
 }

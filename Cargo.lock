@@ -444,6 +444,7 @@ dependencies = [
  "futures",
  "mysql",
  "mysql_common 0.26.0",
+ "rand 0.8.3",
  "serde",
  "serde_json",
  "tokio",
