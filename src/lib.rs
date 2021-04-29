@@ -139,8 +139,7 @@ pub async fn start_server() {
         .or(post_token_route())
         .or(websocket_route());
 
-    let tls = env::var("TLS")
-        .expect("TLS must be set");
+    let tls = env::var("TLS").expect("TLS must be set");
 
     if tls == "true" {
         warp::serve(route)
@@ -150,11 +149,8 @@ pub async fn start_server() {
             .run(server_url)
             .await;
     } else {
-        warp::serve(route)
-            .run(server_url)
-            .await;
+        warp::serve(route).run(server_url).await;
     }
-
 }
 
 //GET example.org/usercert/:googleuserid
