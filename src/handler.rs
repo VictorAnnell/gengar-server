@@ -1,10 +1,9 @@
 //! Module containing the handlers of the applications API endpoints
-use super::*;
 use futures::{FutureExt, StreamExt};
 use google_jwt_verify::*;
 use warp::Reply;
 
-use crate::{Database, Token};
+use crate::{Database, GoogleToken};
 
 /// Handler for endpoint /usercert/:googleuserid.
 pub fn usercert_handler(db: Database, googleuserid: String) -> String {
@@ -25,12 +24,10 @@ pub fn userdata_handler(body: serde_json::Value, db: Database) -> impl Reply {
     Ok(warp::reply::json(&ser_reply))
 }
 
-// TODO: finish google auth implementation
-pub fn post_token_handler(token: serde_json::Value) -> impl Reply {
-    let client_id = "821695412865-f6sndakvma08hqnjkqrjpmm7b2da2hmu.apps.googleusercontent.com";
+pub fn post_token_handler(client_id: String, token: GoogleToken) -> impl Reply {
     let client = Client::new(&client_id);
 
-    let id_token = client.verify_id_token(token["idToken"].as_str().unwrap());
+    let id_token = client.verify_id_token(&token.id_token);
 
     match id_token {
         Ok(_) => {
@@ -75,10 +72,14 @@ mod tests {
     fn userdata_handler_test() {
         let db = Database::new();
 
-        let result = userdata_handler(db.clone(), "234385785823438578589".to_string());
-        assert_eq!(result, "{\"certificates\":[{\"name\":\"cert1\",\"registerdate\":\"1988-12-30\",\"expirationdate\":\"2022-03-30\"},{\"name\":\"cert2\",\"registerdate\":\"2015-02-19\",\"expirationdate\":\"2021-06-02\"}]}");
+        let json_string = serde_json::json!({ "googleuserid": "234385785823438578589" });
+        println!("{:#?}", json_string);
+        let _result = userdata_handler(json_string, db.clone());
+        // assert_eq!(result.into_response().into_body(), warp::hyper::Body::from("{\"certificates\":[{\"name\":\"cert1\",\"registerdate\":\"1988-12-30\",\"expirationdate\":\"2022-03-30\"},{\"name\":\"cert2\",\"registerdate\":\"2015-02-19\",\"expirationdate\":\"2021-06-02\"}]}"));
 
-        let result = userdata_handler(db, "fakeuser".to_string());
-        assert_eq!(result, "{\"certificates\":[]}");
+        let json_string = serde_json::json!({ "googleuserid": "fakeid" });
+        println!("{:#?}", json_string);
+        let _result = userdata_handler(json_string, db.clone());
+        // // assert_eq!(result, "{\"certificates\":[]}");
     }
 }

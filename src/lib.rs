@@ -2,7 +2,7 @@
 use dotenv::dotenv;
 use mysql::{chrono::NaiveDate, prelude::Queryable, Pool};
 use serde::{Deserialize, Serialize};
-use std::{env, net::ToSocketAddrs, convert::Infallible};
+use std::{convert::Infallible, env, net::ToSocketAddrs};
 use warp::{Filter, Reply};
 
 pub mod handler;
@@ -10,8 +10,8 @@ pub mod handler;
 /// Google user token information.
 // TODO: change to reflect token information to be recieved from client
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct Token {
-    token: String,
+pub struct GoogleToken {
+    id_token: String,
 }
 
 /// Information about one or more certificates associated with a single user.
@@ -138,12 +138,14 @@ pub async fn start_server() {
         .next()
         .unwrap();
 
+    let client_id = env::var("CLIENT_ID").expect("CLIENT_ID must be set");
+
     let db = Database::new();
 
     let route = warp::any()
         .and(user_certs_route(db.clone()))
         .or(user_data_route(db.clone()))
-        .or(post_token_route())
+        .or(post_token_route(client_id.clone()))
         .or(websocket_route());
 
     let tls = env::var("TLS").expect("TLS must be set");
@@ -167,13 +169,13 @@ fn user_certs_route(db: Database) -> warp::filters::BoxedFilter<(impl Reply,)> {
         .boxed()
 }
 
-// TODO: complete google auth route
 //POST example.org/login
-fn post_token_route() -> warp::filters::BoxedFilter<(impl Reply,)> {
+fn post_token_route(client_id: String) -> warp::filters::BoxedFilter<(impl Reply,)> {
     warp::path("login")
-    .and(warp::post())
-    .and(warp::body::json())
-    .map(handler::post_token_handler).boxed()
+        .and(warp::post())
+        .and(warp::body::json())
+        .map(move |token: GoogleToken| handler::post_token_handler(client_id.clone(), token))
+        .boxed()
 }
 
 /*
@@ -181,15 +183,16 @@ curl -X POST \
 -H "Content-type: application/json" \
 -H "Accept: application/json" \
 -d '{"googleuserid":"234385785823438578589"}' \
-"localhost:8000/userdata" 
+"localhost:8000/userdata"
 */
 //GET example.org/userdata/:googleuserid
 fn user_data_route(db: Database) -> warp::filters::BoxedFilter<(impl Reply,)> {
     warp::path!("userdata")
-    .and(warp::post())
-    .and(warp::body::json())
-    .and(with_db(db))
-    .map(handler::userdata_handler).boxed()
+        .and(warp::post())
+        .and(warp::body::json())
+        .and(with_db(db))
+        .map(handler::userdata_handler)
+        .boxed()
 }
 
 // TODO: complete websocket route
@@ -200,14 +203,13 @@ fn websocket_route() -> warp::filters::BoxedFilter<(impl Reply,)> {
     .map(handler::websocket_handler).boxed()
 }
 
-
 // GET example.org/sessionid
 // fn session_id_route() -> warp::filters::BoxedFilter<(impl Reply,)> {
 //    warp::path!("sessionid")
 //    .and(warp::get())
 //    .map(handler::post_session_id).boxed()
 // }
- 
+
 // Unit tests
 #[cfg(test)]
 mod tests {
