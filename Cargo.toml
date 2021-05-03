@@ -17,3 +17,4 @@ mysql_common = "0.26.0"
 google-jwt-verify = "0.3.0"
 futures = { version = "0.3.14", default-features = false }
 blake3 = "0.3.7"
+rand = "0.8.3"

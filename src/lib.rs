@@ -1,17 +1,23 @@
 //! This is the gengar module.
 use dotenv::dotenv;
 use mysql::{chrono::NaiveDate, prelude::Queryable, Pool};
+use rand::distributions::Alphanumeric;
+use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
-use std::{convert::Infallible, env, net::ToSocketAddrs};
+use std::{collections::HashMap, convert::Infallible, env, net::ToSocketAddrs};
 use warp::{Filter, Reply};
 
 pub mod handler;
 
 /// Google user token information.
-// TODO: change to reflect token information to be recieved from client
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct GoogleToken {
     id_token: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct QrString {
+    qr_string: String,
 }
 
 /// Information about one or more certificates associated with a single user.
@@ -27,6 +33,8 @@ pub struct CertData {
     registerdate: NaiveDate,
     expirationdate: NaiveDate,
 }
+
+type QrCodes = HashMap<String, String>;
 
 /// Gengar user and vaccine certificate database.
 #[derive(Clone)]
@@ -130,9 +138,26 @@ fn with_db(db: Database) -> impl Filter<Extract = (Database,), Error = Infallibl
     warp::any().map(move || db.clone())
 }
 
+pub fn generate_qr_string() -> QrString {
+    let rand_string: String = thread_rng()
+        .sample_iter(&Alphanumeric)
+        .take(30)
+        .map(char::from)
+        .collect();
+    QrString {
+        qr_string: rand_string,
+    }
+}
+
+fn with_qr_codes(
+    qr_codes: QrCodes,
+) -> impl Filter<Extract = (QrCodes,), Error = Infallible> + Clone {
+    warp::any().map(move || qr_codes.clone())
+}
+
 /// Converts one row from the database as returned by [`get_user_data`](Database::get_user_data())
 /// into a [`CertData`] struct.
-pub fn row_to_certdata(tuple: (String, NaiveDate, NaiveDate)) -> CertData {
+fn row_to_certdata(tuple: (String, NaiveDate, NaiveDate)) -> CertData {
     CertData {
         name: tuple.0,
         registerdate: tuple.1,
@@ -155,11 +180,14 @@ pub async fn start_server() {
 
     let db = Database::new();
 
+    let qr_codes: QrCodes = HashMap::new();
+
     let route = warp::any()
         .and(user_certs_route(db.clone()))
         .or(user_data_route(db.clone()))
         .or(post_token_route(client_id.clone()))
-        .or(websocket_route());
+        .or(websocket_route())
+        .or(user_get_qr_string_route(qr_codes));
 
     let tls = env::var("TLS").expect("TLS must be set");
 
@@ -205,6 +233,17 @@ fn user_data_route(db: Database) -> warp::filters::BoxedFilter<(impl Reply,)> {
         .and(warp::body::json())
         .and(with_db(db))
         .map(handler::userdata_handler)
+        .boxed()
+}
+
+fn user_get_qr_string_route(
+    qr_codes: HashMap<String, String>,
+) -> warp::filters::BoxedFilter<(impl Reply,)> {
+    warp::path!("getqr")
+        .and(warp::post())
+        .and(warp::body::json())
+        .and(with_qr_codes(qr_codes))
+        .map(handler::get_qr_handler)
         .boxed()
 }
 
@@ -303,6 +342,7 @@ mod tests {
             String::from("2021-06-02")
         );
     }
+
     #[test]
     fn user_exist() {
         let db = Database::new();
@@ -315,5 +355,13 @@ mod tests {
             db.user_exist(String::from("nonexistant_user")).unwrap(),
             false
         );
+    }
+
+    #[test]
+    fn generate_qr_string_test() {
+        let rand_1 = generate_qr_string();
+        let rand_2 = generate_qr_string();
+        assert_eq!(rand_1.qr_string.len(), rand_2.qr_string.len());
+        assert_ne!(rand_1.qr_string, rand_2.qr_string);
     }
 }
