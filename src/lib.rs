@@ -111,6 +111,19 @@ impl Database {
             hashed_googleuserid
         ))
     }
+
+    /// Check if user with `googleuserid` exist in database
+    pub fn user_exist(&self, googleuserid: String) -> mysql::Result<bool> {
+        let hashed_googleuserid = blake3::hash(googleuserid.as_bytes()).to_hex().to_string();
+        let mut conn = self.pool.get_conn()?;
+        let row: Vec<String> = conn.query(format!(
+            r"SELECT 1
+                FROM Users
+                WHERE GoogleUserID = '{}';",
+            hashed_googleuserid
+        ))?;
+        Ok(row.len() == 1)
+    }
 }
 
 fn with_db(db: Database) -> impl Filter<Extract = (Database,), Error = Infallible> + Clone {
@@ -288,6 +301,19 @@ mod tests {
         assert_eq!(
             result[1].expirationdate.to_string(),
             String::from("2021-06-02")
+        );
+    }
+    #[test]
+    fn user_exist() {
+        let db = Database::new();
+        assert_eq!(
+            db.user_exist(String::from("234385785823438578589"))
+                .unwrap(),
+            true
+        );
+        assert_eq!(
+            db.user_exist(String::from("nonexistant_user")).unwrap(),
+            false
         );
     }
 }
