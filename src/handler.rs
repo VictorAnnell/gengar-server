@@ -62,7 +62,6 @@ pub fn get_qr_handler(body: serde_json::Value, qr_codes: QrCodes) -> impl Reply 
 pub fn verify_cert_handler(body: serde_json::Value, db: Database) -> impl Reply {
     let googleuserid = body["googleuserid"].to_string();
     let req_cert = body["certificatestocheck"].to_string();
-
     let googleuserid: String = serde_json::from_str(&googleuserid).unwrap();
     let req_cert: String = serde_json::from_str(&req_cert).unwrap();
 

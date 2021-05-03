@@ -265,13 +265,13 @@ fn websocket_route() -> warp::filters::BoxedFilter<(impl Reply,)> {
 //    .map(handler::post_session_id).boxed()
 // }
 
-fn verify_cert_route(db: Database) -> warp::filters::BoxedFilter<(impl Reply,)> {
+fn verify_cert_route(db:Database) -> warp::filters::BoxedFilter<(impl Reply,)> {
     warp::path!("verify")
-        .and(warp::post())
-        .and(warp::body::json())
-        .and(with_db(db))
-        .map(handler::verify_cert_handler)
-        .boxed()
+    .and(warp::post())
+    .and(warp::body::json())
+    .and(with_db(db.clone()))
+    .map(handler::verify_cert_handler)
+    .boxed()
 }
 
 // Unit tests
