@@ -188,8 +188,6 @@ pub async fn start_server() {
         .or(post_token_route(client_id.clone()))
         .or(websocket_route())
         .or(user_get_qr_string_route(qr_codes))
-        .or(post_token_route(client_id))
-        .or(websocket_route())
         .or(verify_cert_route(db.clone()));
 
     let tls = env::var("TLS").expect("TLS must be set");
