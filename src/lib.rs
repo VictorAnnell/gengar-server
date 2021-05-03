@@ -20,7 +20,7 @@ pub struct Token {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct QrString {
-    rand_string: String,
+    qr_string: String,
 }
 
 /// Information about one or more certificates associated with a single user.
@@ -131,7 +131,7 @@ pub fn generate_qr_string() -> QrString {
     .map(char::from)
     .collect();
     QrString {
-        rand_string: rand_string
+        qr_string: rand_string
     }
 }
 
@@ -305,8 +305,8 @@ mod tests {
     fn generate_qr_string_test() {
         let rand_1 = generate_qr_string();
         let rand_2 = generate_qr_string();
-        assert_eq!(rand_1.rand_string.len(),rand_2.rand_string.len());
-        assert_ne!(rand_1.rand_string, rand_2.rand_string);
+        assert_eq!(rand_1.qr_string.len(),rand_2.qr_string.len());
+        assert_ne!(rand_1.qr_string, rand_2.qr_string);
     }
 
     

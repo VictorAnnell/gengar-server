@@ -44,7 +44,7 @@ pub fn websocket_handler(ws: warp::ws::Ws) -> impl Reply {
 pub fn get_qr_handler(body: serde_json::Value, qr_codes: QrCodes) -> impl Reply {
     let googleuserid = body["googleuserid"].to_string();
     let qr = generate_qr_string();
-    qr_codes.clone().insert(googleuserid, qr.rand_string.clone());
+    qr_codes.clone().insert(googleuserid, qr.qr_string.clone());
     let ser_qr = serde_json::to_string(&(qr)).unwrap();
 
     Ok(warp::reply::json(&ser_qr))
