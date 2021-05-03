@@ -1,7 +1,6 @@
 //! Module containing the handlers of the applications API endpoints
 use super::*;
 use futures::{FutureExt, StreamExt};
-use serde_json::json;
 use warp::Reply;
 
 use crate::{Database, Token};
@@ -54,6 +53,7 @@ pub fn get_qr_handler(body: serde_json::Value, qr_codes: QrCodes) -> impl Reply 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
 
     #[test]
     fn usercert_handler_test() {
