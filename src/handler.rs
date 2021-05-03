@@ -30,10 +30,7 @@ pub fn post_token_handler(client_id: String, token: GoogleToken) -> impl Reply {
     let id_token = client.verify_id_token(&token.id_token);
 
     match id_token {
-        Ok(_) => {
-            let user_id = id_token.unwrap().get_claims().get_subject();
-            String::from(user_id)
-        }
+        Ok(_) => id_token.unwrap().get_claims().get_subject(),
         Err(_) => String::from("Err"),
     }
 }
@@ -79,7 +76,7 @@ mod tests {
 
         let json_string = serde_json::json!({ "googleuserid": "fakeid" });
         println!("{:#?}", json_string);
-        let _result = userdata_handler(json_string, db.clone());
+        let _result = userdata_handler(json_string, db);
         // // assert_eq!(result, "{\"certificates\":[]}");
     }
 }
