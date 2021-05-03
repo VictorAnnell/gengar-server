@@ -8,7 +8,6 @@ use warp::Reply;
 
 /// Handler for endpoint /usercert/:googleuserid.
 pub fn usercert_handler(db: Database, googleuserid: String) -> String {
-    println!("{}", googleuserid);
     let reply = db.get_certs(googleuserid).unwrap();
 
     serde_json::to_string(&reply).unwrap()
