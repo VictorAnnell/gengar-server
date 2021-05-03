@@ -3,7 +3,7 @@ use super::*;
 use futures::{FutureExt, StreamExt};
 use google_jwt_verify::*;
 use warp::Reply;
-
+use serde_json::json;
 use crate::{Database, GoogleToken};
 
 /// Handler for endpoint /usercert/:googleuserid.
@@ -58,6 +58,22 @@ pub fn get_qr_handler(body: serde_json::Value, qr_codes: QrCodes) -> impl Reply 
     let ser_qr = serde_json::to_string(&(qr)).unwrap();
 
     Ok(warp::reply::json(&ser_qr))
+}
+pub fn verify_cert_handler(body: serde_json::Value, db: Database) -> impl Reply {
+    let googleuserid = body["googleuserid"].to_string();
+    let req_cert = body["certificatestocheck"].to_string();
+    
+    let googleuserid: String = serde_json::from_str(&googleuserid).unwrap();
+    let req_cert: String = serde_json::from_str(&req_cert).unwrap();
+
+    let usr_data: UserData = db.get_user_data(googleuserid).unwrap();
+
+    let success: bool = usr_data.certificates[0].name == req_cert;
+
+    let reply = json!({
+        "successful": success,
+    });
+    Ok(warp::reply::json(&reply))
 }
 
 // Unit tests

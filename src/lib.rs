@@ -134,10 +134,6 @@ impl Database {
     }
 }
 
-fn with_db(db: Database) -> impl Filter<Extract = (Database,), Error = Infallible> + Clone {
-    warp::any().map(move || db.clone())
-}
-
 pub fn generate_qr_string() -> QrString {
     let rand_string: String = thread_rng()
         .sample_iter(&Alphanumeric)
@@ -153,6 +149,10 @@ fn with_qr_codes(
     qr_codes: QrCodes,
 ) -> impl Filter<Extract = (QrCodes,), Error = Infallible> + Clone {
     warp::any().map(move || qr_codes.clone())
+}
+
+fn with_db(db: Database) -> impl Filter<Extract = (Database,), Error = Infallible> + Clone {
+    warp::any().map(move || db.clone())
 }
 
 /// Converts one row from the database as returned by [`get_user_data`](Database::get_user_data())
@@ -187,7 +187,10 @@ pub async fn start_server() {
         .or(user_data_route(db.clone()))
         .or(post_token_route(client_id.clone()))
         .or(websocket_route())
-        .or(user_get_qr_string_route(qr_codes));
+        .or(user_get_qr_string_route(qr_codes))
+        .or(post_token_route(client_id))
+        .or(websocket_route())
+        .or(verify_cert_route(db.clone()));
 
     let tls = env::var("TLS").expect("TLS must be set");
 
@@ -261,6 +264,15 @@ fn websocket_route() -> warp::filters::BoxedFilter<(impl Reply,)> {
 //    .and(warp::get())
 //    .map(handler::post_session_id).boxed()
 // }
+
+fn verify_cert_route(db:Database) -> warp::filters::BoxedFilter<(impl Reply,)> {
+    warp::path!("verify")
+    .and(warp::post())
+    .and(warp::body::json())
+    .and(with_db(db.clone()))
+    .map(handler::verify_cert_handler)
+    .boxed()
+}
 
 // Unit tests
 #[cfg(test)]
