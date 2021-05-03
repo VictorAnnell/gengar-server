@@ -1,13 +1,13 @@
 //! This is the gengar module.
 use dotenv::dotenv;
 use mysql::{chrono::NaiveDate, prelude::Queryable, Pool};
+use rand::distributions::Alphanumeric;
+use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
-use std::{env, net::ToSocketAddrs};
-use warp::{Filter, Reply};
 use std::collections::HashMap;
 use std::convert::Infallible;
-use rand::{thread_rng, Rng};
-use rand::distributions::Alphanumeric;
+use std::{env, net::ToSocketAddrs};
+use warp::{Filter, Reply};
 
 pub mod handler;
 
@@ -126,16 +126,18 @@ impl Database {
 
 pub fn generate_qr_string() -> QrString {
     let rand_string: String = thread_rng()
-    .sample_iter(&Alphanumeric)
-    .take(30)
-    .map(char::from)
-    .collect();
+        .sample_iter(&Alphanumeric)
+        .take(30)
+        .map(char::from)
+        .collect();
     QrString {
-        qr_string: rand_string
+        qr_string: rand_string,
     }
 }
 
-fn with_qr_codes(qr_codes: QrCodes) -> impl Filter<Extract = (QrCodes,), Error = Infallible> + Clone {
+fn with_qr_codes(
+    qr_codes: QrCodes,
+) -> impl Filter<Extract = (QrCodes,), Error = Infallible> + Clone {
     warp::any().map(move || qr_codes.clone())
 }
 
@@ -203,13 +205,15 @@ fn user_data_route(db: Database) -> warp::filters::BoxedFilter<(impl Reply,)> {
         .boxed()
 }
 
-fn user_get_qr_string_route(qr_codes: HashMap<String,String>) -> warp::filters::BoxedFilter<(impl Reply,)> {
+fn user_get_qr_string_route(
+    qr_codes: HashMap<String, String>,
+) -> warp::filters::BoxedFilter<(impl Reply,)> {
     warp::path!("getqr")
-    .and(warp::post())
-    .and(warp::body::json())
-    .and(with_qr_codes(qr_codes))
-    .map(handler::get_qr_handler)
-    .boxed()
+        .and(warp::post())
+        .and(warp::body::json())
+        .and(with_qr_codes(qr_codes))
+        .map(handler::get_qr_handler)
+        .boxed()
 }
 
 // TODO: complete websocket route
@@ -305,9 +309,7 @@ mod tests {
     fn generate_qr_string_test() {
         let rand_1 = generate_qr_string();
         let rand_2 = generate_qr_string();
-        assert_eq!(rand_1.qr_string.len(),rand_2.qr_string.len());
+        assert_eq!(rand_1.qr_string.len(), rand_2.qr_string.len());
         assert_ne!(rand_1.qr_string, rand_2.qr_string);
     }
-
-    
 }

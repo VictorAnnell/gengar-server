@@ -1,9 +1,8 @@
 //! Module containing the handlers of the applications API endpoints
-use futures::{FutureExt, StreamExt};
-use warp::Reply;
-use serde_json::json;
 use super::*;
-
+use futures::{FutureExt, StreamExt};
+use serde_json::json;
+use warp::Reply;
 
 use crate::{Database, Token};
 
@@ -44,7 +43,8 @@ pub fn websocket_handler(ws: warp::ws::Ws) -> impl Reply {
 pub fn get_qr_handler(body: serde_json::Value, qr_codes: QrCodes) -> impl Reply {
     let googleuserid = body["googleuserid"].to_string();
     let qr = generate_qr_string();
-    qr_codes.clone().insert(googleuserid, qr.qr_string.clone());
+    let mut qr_codes = qr_codes;
+    qr_codes.insert(googleuserid, qr.qr_string.clone());
     let ser_qr = serde_json::to_string(&(qr)).unwrap();
 
     Ok(warp::reply::json(&ser_qr))
