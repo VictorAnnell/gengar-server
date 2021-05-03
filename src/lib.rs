@@ -194,8 +194,8 @@ pub async fn start_server() {
     if tls == "true" {
         warp::serve(route)
             .tls()
-            .cert_path("tls/localhost.crt")
-            .key_path("tls/localhost.key")
+            .cert_path(env::var("CERT_PATH").expect("CERT_PATH must be set"))
+            .key_path(env::var("KEY_PATH").expect("KEY_PATH must be set"))
             .run(server_url)
             .await;
     } else {
