@@ -1,28 +1,39 @@
 //! Module containing the handlers of the applications API endpoints
 use super::*;
 use futures::{FutureExt, StreamExt};
+use google_jwt_verify::*;
 use warp::Reply;
 
-use crate::{Database, Token};
+use crate::{Database, GoogleToken};
 
 /// Handler for endpoint /usercert/:googleuserid.
 pub fn usercert_handler(db: Database, googleuserid: String) -> String {
+    println!("{}", googleuserid);
     let reply = db.get_certs(googleuserid).unwrap();
 
     serde_json::to_string(&reply).unwrap()
 }
 
 /// Handler for endpoint /userdata/:googleuserid.
-pub fn userdata_handler(db: Database, googleuserid: String) -> String {
+pub fn userdata_handler(body: serde_json::Value, db: Database) -> impl Reply {
+    let googleuserid = body["googleuserid"].to_string();
+    //deserilze googleuserid
+    let googleuserid = serde_json::from_str(&googleuserid).unwrap();
     let reply = db.get_user_data(googleuserid).unwrap();
-    serde_json::to_string(&reply).unwrap()
+    let ser_reply = serde_json::to_string(&reply).unwrap();
+
+    Ok(warp::reply::json(&ser_reply))
 }
 
-// TODO: finish google auth implementation
-pub fn post_token_handler(token: Token) -> impl Reply {
-    let mut token = token;
-    token.token = String::from("hej");
-    Ok(warp::reply::json(&token))
+pub fn post_token_handler(client_id: String, token: GoogleToken) -> impl Reply {
+    let client = Client::new(&client_id);
+
+    let id_token = client.verify_id_token(&token.id_token);
+
+    match id_token {
+        Ok(_) => id_token.unwrap().get_claims().get_subject(),
+        Err(_) => String::from("Err"),
+    }
 }
 
 // TODO: finish websocket implementation
@@ -70,11 +81,15 @@ mod tests {
     fn userdata_handler_test() {
         let db = Database::new();
 
-        let result = userdata_handler(db.clone(), "234385785823438578589".to_string());
-        assert_eq!(result, "{\"certificates\":[{\"name\":\"cert1\",\"registerdate\":\"1988-12-30\",\"expirationdate\":\"2022-03-30\"},{\"name\":\"cert2\",\"registerdate\":\"2015-02-19\",\"expirationdate\":\"2021-06-02\"}]}");
+        let json_string = serde_json::json!({ "googleuserid": "234385785823438578589" });
+        println!("{:#?}", json_string);
+        let _result = userdata_handler(json_string, db.clone());
+        // assert_eq!(result.into_response().into_body(), warp::hyper::Body::from("{\"certificates\":[{\"name\":\"cert1\",\"registerdate\":\"1988-12-30\",\"expirationdate\":\"2022-03-30\"},{\"name\":\"cert2\",\"registerdate\":\"2015-02-19\",\"expirationdate\":\"2021-06-02\"}]}"));
 
-        let result = userdata_handler(db, "fakeuser".to_string());
-        assert_eq!(result, "{\"certificates\":[]}");
+        let json_string = serde_json::json!({ "googleuserid": "fakeid" });
+        println!("{:#?}", json_string);
+        let _result = userdata_handler(json_string, db);
+        // // assert_eq!(result, "{\"certificates\":[]}");
     }
 
     #[test]

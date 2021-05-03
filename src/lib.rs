@@ -4,18 +4,15 @@ use mysql::{chrono::NaiveDate, prelude::Queryable, Pool};
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::convert::Infallible;
-use std::{env, net::ToSocketAddrs};
+use std::{collections::HashMap, convert::Infallible, env, net::ToSocketAddrs};
 use warp::{Filter, Reply};
 
 pub mod handler;
 
 /// Google user token information.
-// TODO: change to reflect token information to be recieved from client
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct Token {
-    token: String,
+pub struct GoogleToken {
+    id_token: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -122,6 +119,23 @@ impl Database {
             hashed_googleuserid
         ))
     }
+
+    /// Check if user with `googleuserid` exist in database
+    pub fn user_exist(&self, googleuserid: String) -> mysql::Result<bool> {
+        let hashed_googleuserid = blake3::hash(googleuserid.as_bytes()).to_hex().to_string();
+        let mut conn = self.pool.get_conn()?;
+        let row: Vec<String> = conn.query(format!(
+            r"SELECT 1
+                FROM Users
+                WHERE GoogleUserID = '{}';",
+            hashed_googleuserid
+        ))?;
+        Ok(row.len() == 1)
+    }
+}
+
+fn with_db(db: Database) -> impl Filter<Extract = (Database,), Error = Infallible> + Clone {
+    warp::any().map(move || db.clone())
 }
 
 pub fn generate_qr_string() -> QrString {
@@ -162,6 +176,8 @@ pub async fn start_server() {
         .next()
         .unwrap();
 
+    let client_id = env::var("CLIENT_ID").expect("CLIENT_ID must be set");
+
     let db = Database::new();
 
     let qr_codes: QrCodes = HashMap::new();
@@ -169,7 +185,7 @@ pub async fn start_server() {
     let route = warp::any()
         .and(user_certs_route(db.clone()))
         .or(user_data_route(db.clone()))
-        .or(post_token_route())
+        .or(post_token_route(client_id.clone()))
         .or(websocket_route())
         .or(user_get_qr_string_route(qr_codes));
 
@@ -194,20 +210,29 @@ fn user_certs_route(db: Database) -> warp::filters::BoxedFilter<(impl Reply,)> {
         .boxed()
 }
 
-// TODO: complete google auth route
 //POST example.org/login
-fn post_token_route() -> warp::filters::BoxedFilter<(impl Reply,)> {
-    warp::path!("login")
+fn post_token_route(client_id: String) -> warp::filters::BoxedFilter<(impl Reply,)> {
+    warp::path("login")
         .and(warp::post())
         .and(warp::body::json())
-        .map(handler::post_token_handler)
+        .map(move |token: GoogleToken| handler::post_token_handler(client_id.clone(), token))
         .boxed()
 }
 
+/*
+curl -X POST \
+-H "Content-type: application/json" \
+-H "Accept: application/json" \
+-d '{"googleuserid":"234385785823438578589"}' \
+"localhost:8000/userdata"
+*/
 //GET example.org/userdata/:googleuserid
 fn user_data_route(db: Database) -> warp::filters::BoxedFilter<(impl Reply,)> {
-    warp::path!("userdata" / String)
-        .map(move |googleuserid: String| handler::userdata_handler(db.clone(), googleuserid))
+    warp::path!("userdata")
+        .and(warp::post())
+        .and(warp::body::json())
+        .and(with_db(db))
+        .map(handler::userdata_handler)
         .boxed()
 }
 
@@ -229,6 +254,13 @@ fn websocket_route() -> warp::filters::BoxedFilter<(impl Reply,)> {
     .and(warp::ws())
     .map(handler::websocket_handler).boxed()
 }
+
+// GET example.org/sessionid
+// fn session_id_route() -> warp::filters::BoxedFilter<(impl Reply,)> {
+//    warp::path!("sessionid")
+//    .and(warp::get())
+//    .map(handler::post_session_id).boxed()
+// }
 
 // Unit tests
 #[cfg(test)]
@@ -308,6 +340,20 @@ mod tests {
         assert_eq!(
             result[1].expirationdate.to_string(),
             String::from("2021-06-02")
+        );
+    }
+
+    #[test]
+    fn user_exist() {
+        let db = Database::new();
+        assert_eq!(
+            db.user_exist(String::from("234385785823438578589"))
+                .unwrap(),
+            true
+        );
+        assert_eq!(
+            db.user_exist(String::from("nonexistant_user")).unwrap(),
+            false
         );
     }
 

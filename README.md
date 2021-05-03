@@ -58,9 +58,10 @@ The server back-end to the [VaccMe mobile application][] written in Rust for the
    Password: gengar
    ```
 
-4. Create a `.env` file in the repository's root directory, and add the connection details for your database.
+4. Create a `.env` file in the repository's root directory, and there add the required environment variables.
 
    See [.env.sample](.env.sample) for an example that works with the previously mentioned docker setup.
+   Note that a valid CLIENT_ID is not provided in the sample.
 
 5. With this done try running the test suite to confirm everything works:
 
