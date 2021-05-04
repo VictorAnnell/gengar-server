@@ -18,3 +18,5 @@ google-jwt-verify = "0.3.0"
 futures = { version = "0.3.14", default-features = false }
 blake3 = "0.3.7"
 rand = "0.8.3"
+pretty_env_logger = "0.4.0"
+log = "0.4.14"
