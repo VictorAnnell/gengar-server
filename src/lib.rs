@@ -169,6 +169,13 @@ fn row_to_certdata(tuple: (String, NaiveDate, NaiveDate)) -> CertData {
 pub async fn start_server() {
     dotenv().ok();
 
+    if env::var_os("RUST_LOG").is_none() {
+        // Set `RUST_LOG=debug` to see debug logs,
+        // this only shows access logs.
+        env::set_var("RUST_LOG", "info");
+    }
+    pretty_env_logger::init();
+
     let server_url = env::var("SERVER_URL")
         .expect("SERVER_URL must be set")
         .to_socket_addrs()
@@ -189,6 +196,8 @@ pub async fn start_server() {
         .or(websocket_route())
         .or(user_get_qr_string_route(qr_codes))
         .or(verify_cert_route(db.clone()));
+
+    let route = route.with(warp::log(""));
 
     let tls = env::var("TLS").expect("TLS must be set");
 
