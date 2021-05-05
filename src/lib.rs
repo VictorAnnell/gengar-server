@@ -4,6 +4,8 @@ use mysql::{chrono::NaiveDate, prelude::Queryable, Pool};
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
+use std::sync::RwLock;
 use std::{collections::HashMap, convert::Infallible, env, net::ToSocketAddrs};
 use warp::{Filter, Reply};
 
@@ -34,7 +36,7 @@ pub struct CertData {
     expirationdate: NaiveDate,
 }
 
-type QrCodes = HashMap<String, String>;
+type QrCodes = Arc<RwLock<HashMap<String, String>>>;
 
 /// Gengar user and vaccine certificate database.
 #[derive(Clone)]
@@ -187,15 +189,16 @@ pub async fn start_server() {
 
     let db = Database::new();
 
-    let qr_codes: QrCodes = HashMap::new();
+    let qr_codes: QrCodes = Arc::new(RwLock::new(HashMap::new()));
 
     let route = warp::any()
         .and(user_certs_route(db.clone()))
         .or(user_data_route(db.clone()))
         .or(post_token_route(client_id.clone()))
         .or(websocket_route())
-        .or(user_get_qr_string_route(qr_codes))
-        .or(verify_cert_route(db.clone()));
+        .or(user_get_qr_string_route(qr_codes.clone()))
+        .or(get_user_id_with_qr_string(qr_codes.clone()))
+        .or(verify_cert_route(db.clone(), qr_codes.clone()));
 
     let route = route.with(warp::log(""));
 
@@ -246,14 +249,21 @@ fn user_data_route(db: Database) -> warp::filters::BoxedFilter<(impl Reply,)> {
         .boxed()
 }
 
-fn user_get_qr_string_route(
-    qr_codes: HashMap<String, String>,
-) -> warp::filters::BoxedFilter<(impl Reply,)> {
+fn user_get_qr_string_route(qr_codes: QrCodes) -> warp::filters::BoxedFilter<(impl Reply,)> {
     warp::path!("getqr")
         .and(warp::post())
         .and(warp::body::json())
         .and(with_qr_codes(qr_codes))
         .map(handler::get_qr_handler)
+        .boxed()
+}
+
+fn get_user_id_with_qr_string(qr_codes: QrCodes) -> warp::filters::BoxedFilter<(impl Reply,)> {
+    warp::path!("postqr")
+        .and(warp::post())
+        .and(warp::body::json())
+        .and(with_qr_codes(qr_codes))
+        .map(handler::qr_for_user_id_handler)
         .boxed()
 }
 
@@ -272,11 +282,12 @@ fn websocket_route() -> warp::filters::BoxedFilter<(impl Reply,)> {
 //    .map(handler::post_session_id).boxed()
 // }
 
-fn verify_cert_route(db: Database) -> warp::filters::BoxedFilter<(impl Reply,)> {
+fn verify_cert_route(db: Database, qr_codes: QrCodes) -> warp::filters::BoxedFilter<(impl Reply,)> {
     warp::path!("verify")
         .and(warp::post())
         .and(warp::body::json())
         .and(with_db(db))
+        .and(with_qr_codes(qr_codes))
         .map(handler::verify_cert_handler)
         .boxed()
 }

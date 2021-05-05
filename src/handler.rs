@@ -50,23 +50,35 @@ pub fn websocket_handler(ws: warp::ws::Ws) -> impl Reply {
 }
 
 pub fn get_qr_handler(body: serde_json::Value, qr_codes: QrCodes) -> impl Reply {
-    let googleuserid = body["googleuserid"].to_string();
+    let googleuserid = body["googleuserid"].as_str().unwrap();
     let qr = generate_qr_string();
-    let mut qr_codes = qr_codes;
-    qr_codes.insert(googleuserid, qr.qr_string.clone());
+
+    qr_codes
+        .write()
+        .unwrap()
+        .insert(qr.qr_string.clone(), googleuserid.to_string());
     let ser_qr = serde_json::to_string(&(qr)).unwrap();
 
     Ok(warp::reply::json(&ser_qr))
 }
-pub fn verify_cert_handler(body: serde_json::Value, db: Database) -> impl Reply {
-    let googleuserid = body["googleuserid"].to_string();
-    let req_cert = body["certificatestocheck"].to_string();
-    let googleuserid: String = serde_json::from_str(&googleuserid).unwrap();
-    let req_cert: String = serde_json::from_str(&req_cert).unwrap();
+
+pub fn verify_cert_handler(body: serde_json::Value, db: Database, qr_codes: QrCodes) -> impl Reply {
+    let qrstring: String = body["qrstring"].as_str().unwrap().to_string();
+    let req_cert: String = body["certificatestocheck"].as_str().unwrap().to_string();
+
+    let temp = qr_codes.read().unwrap();
+
+    let googleuserid = temp.get(&qrstring).unwrap().to_string();
 
     let usr_data: UserData = db.get_user_data(googleuserid).unwrap();
 
-    let success: bool = usr_data.certificates[0].name == req_cert;
+    let mut success: bool = false;
+    for i in usr_data.certificates {
+        if i.name == req_cert {
+            success = true;
+            break;
+        }
+    }
 
     let reply = json!({
         "successful": success,
@@ -74,12 +86,24 @@ pub fn verify_cert_handler(body: serde_json::Value, db: Database) -> impl Reply 
     Ok(warp::reply::json(&reply))
 }
 
+pub fn qr_for_user_id_handler(body: serde_json::Value, qr_codes: QrCodes) -> impl Reply {
+    let qrstring = body["qrstring"].to_string();
+
+    let qrstring: String = serde_json::from_str(&qrstring).unwrap();
+
+    let temp = qr_codes.read().unwrap();
+
+    let guid = temp.get(&qrstring).unwrap();
+
+    let ser_guid = serde_json::to_string(&guid).unwrap();
+
+    Ok(warp::reply::json(&ser_guid))
+}
+
 // Unit tests
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde_json::json;
-
     #[test]
     fn usercert_handler_test() {
         let db = Database::new();
@@ -104,14 +128,5 @@ mod tests {
         println!("{:#?}", json_string);
         let _result = userdata_handler(json_string, db);
         // // assert_eq!(result, "{\"certificates\":[]}");
-    }
-
-    #[test]
-    fn get_qr_handler_test() {
-        let body = json!({"googleuserid": "234385785823438578589"});
-        let qr_codes: QrCodes = HashMap::new();
-        let result = get_qr_handler(body, qr_codes).into_response();
-        println!("{:?}", result);
-        //Work in progress
     }
 }
