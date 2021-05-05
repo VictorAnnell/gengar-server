@@ -54,7 +54,7 @@ pub fn get_qr_handler(body: serde_json::Value, qr_codes: QrCodes, db: Database) 
     if !db.user_exist(googleuserid.to_string()).unwrap() {
         panic!()
     };
-    let qr = generate_qr_string();
+    let qr = QrString::new();
 
     qr_codes
         .write()

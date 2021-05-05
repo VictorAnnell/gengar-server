@@ -23,6 +23,39 @@ pub struct QrString {
     qr_string: String,
 }
 
+impl QrString {
+    pub fn new() -> Self {
+        Self {
+            qr_string: generate_rand_string(),
+        }
+    }
+}
+
+impl Default for QrString {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct SessionId {
+    id: String,
+}
+
+impl SessionId {
+    pub fn new() -> Self {
+        Self {
+            id: generate_rand_string(),
+        }
+    }
+}
+
+impl Default for SessionId {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Information about one or more certificates associated with a single user.
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct UserData {
@@ -137,15 +170,12 @@ impl Database {
     }
 }
 
-pub fn generate_qr_string() -> QrString {
-    let rand_string: String = thread_rng()
+fn generate_rand_string() -> String {
+    thread_rng()
         .sample_iter(&Alphanumeric)
         .take(30)
         .map(char::from)
-        .collect();
-    QrString {
-        qr_string: rand_string,
-    }
+        .collect()
 }
 
 fn with_qr_codes(
@@ -393,10 +423,10 @@ mod tests {
     }
 
     #[test]
-    fn generate_qr_string_test() {
-        let rand_1 = generate_qr_string();
-        let rand_2 = generate_qr_string();
-        assert_eq!(rand_1.qr_string.len(), rand_2.qr_string.len());
-        assert_ne!(rand_1.qr_string, rand_2.qr_string);
+    fn generate_rand_string_test() {
+        let rand_1 = generate_rand_string();
+        let rand_2 = generate_rand_string();
+        assert_eq!(rand_1.len(), rand_2.len());
+        assert_ne!(rand_1, rand_2);
     }
 }
