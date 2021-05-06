@@ -49,8 +49,11 @@ pub fn websocket_handler(ws: warp::ws::Ws) -> impl Reply {
     })
 }
 
-pub fn get_qr_handler(body: serde_json::Value, qr_codes: QrCodes) -> impl Reply {
+pub fn get_qr_handler(body: serde_json::Value, qr_codes: QrCodes, db: Database) -> impl Reply {
     let googleuserid = body["googleuserid"].as_str().unwrap();
+    if !db.user_exist(googleuserid.to_string()).unwrap() {
+        panic!()
+    };
     let qr = generate_qr_string();
 
     qr_codes
