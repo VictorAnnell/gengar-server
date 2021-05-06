@@ -56,7 +56,13 @@ pub fn get_qr_handler(body: serde_json::Value, qr_codes: QrCodes) -> impl Reply 
     qr_codes
         .write()
         .unwrap()
+        .remove_by_right(&googleuserid.to_string());
+
+    qr_codes
+        .write()
+        .unwrap()
         .insert(qr.qr_string.clone(), googleuserid.to_string());
+
     let ser_qr = serde_json::to_string(&(qr)).unwrap();
 
     Ok(warp::reply::json(&ser_qr))
@@ -68,7 +74,7 @@ pub fn verify_cert_handler(body: serde_json::Value, db: Database, qr_codes: QrCo
 
     let temp = qr_codes.read().unwrap();
 
-    let googleuserid = temp.get(&qrstring).unwrap().to_string();
+    let googleuserid = temp.get_by_left(&qrstring).unwrap().to_string();
 
     let usr_data: UserData = db.get_user_data(googleuserid).unwrap();
 
@@ -93,7 +99,7 @@ pub fn qr_for_user_id_handler(body: serde_json::Value, qr_codes: QrCodes) -> imp
 
     let temp = qr_codes.read().unwrap();
 
-    let guid = temp.get(&qrstring).unwrap();
+    let guid = temp.get_by_left(&qrstring).unwrap();
 
     let ser_guid = serde_json::to_string(&guid).unwrap();
 

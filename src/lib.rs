@@ -1,4 +1,5 @@
 //! This is the gengar module.
+use bimap::BiMap;
 use dotenv::dotenv;
 use mysql::{chrono::NaiveDate, prelude::Queryable, Pool};
 use rand::distributions::Alphanumeric;
@@ -6,7 +7,7 @@ use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::sync::RwLock;
-use std::{collections::HashMap, convert::Infallible, env, net::ToSocketAddrs};
+use std::{convert::Infallible, env, net::ToSocketAddrs};
 use warp::{Filter, Reply};
 
 pub mod handler;
@@ -36,7 +37,7 @@ pub struct CertData {
     expirationdate: NaiveDate,
 }
 
-type QrCodes = Arc<RwLock<HashMap<String, String>>>;
+type QrCodes = Arc<RwLock<BiMap<String, String>>>;
 
 /// Gengar user and vaccine certificate database.
 #[derive(Clone)]
@@ -189,7 +190,7 @@ pub async fn start_server() {
 
     let db = Database::new();
 
-    let qr_codes: QrCodes = Arc::new(RwLock::new(HashMap::new()));
+    let qr_codes: QrCodes = Arc::new(RwLock::new(BiMap::new()));
 
     let route = warp::any()
         .and(user_certs_route(db.clone()))
