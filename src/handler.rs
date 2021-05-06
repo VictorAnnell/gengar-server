@@ -53,6 +53,8 @@ pub fn get_qr_handler(body: serde_json::Value, qr_codes: QrCodes) -> impl Reply 
     let googleuserid = body["googleuserid"].as_str().unwrap();
     let qr = generate_qr_string();
 
+    qr_codes.write().unwrap().retain(|_, v| v != googleuserid);
+
     qr_codes
         .write()
         .unwrap()
