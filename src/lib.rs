@@ -5,8 +5,12 @@ use mysql::{chrono::NaiveDate, prelude::Queryable, Pool};
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
-use std::{cmp::Ordering, hash::{Hash, Hasher}, sync::Arc};
 use std::sync::RwLock;
+use std::{
+    cmp::Ordering,
+    hash::{Hash, Hasher},
+    sync::Arc,
+};
 use std::{convert::Infallible, env, net::ToSocketAddrs};
 use warp::{Filter, Reply};
 
@@ -275,7 +279,7 @@ pub async fn start_server() {
 
     let route = warp::any()
         .and(user_certs_route(db.clone()))
-        .or(user_data_route(db.clone()))
+        .or(user_data_route(db.clone(), session_ids.clone()))
         .or(post_token_route(
             client_id.clone(),
             db.clone(),
@@ -309,13 +313,13 @@ fn user_certs_route(db: Database) -> warp::filters::BoxedFilter<(impl Reply,)> {
         .boxed()
 }
 
-//POST example.org/login
+//POST example.org/getsessionid
 fn post_token_route(
     client_id: String,
     db: Database,
     session_ids: SessionIds,
 ) -> warp::filters::BoxedFilter<(impl Reply,)> {
-    warp::path("login")
+    warp::path("getsessionid")
         .and(warp::post())
         .and(warp::body::json())
         .and(with_db(db))
@@ -333,11 +337,15 @@ curl -X POST \
 "localhost:8000/userdata"
 */
 //GET example.org/userdata/:googleuserid
-fn user_data_route(db: Database) -> warp::filters::BoxedFilter<(impl Reply,)> {
+fn user_data_route(
+    db: Database,
+    session_ids: SessionIds,
+) -> warp::filters::BoxedFilter<(impl Reply,)> {
     warp::path!("userdata")
         .and(warp::post())
         .and(warp::body::json())
         .and(with_db(db))
+        .and(with_session_ids(session_ids))
         .map(handler::userdata_handler)
         .boxed()
 }
