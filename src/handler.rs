@@ -17,11 +17,9 @@ pub fn usercert_handler(db: Database, googleuserid: String) -> String {
 pub fn userdata_handler(body: serde_json::Value, db: Database) -> impl Reply {
     let googleuserid = body["googleuserid"].to_string();
     //deserilze googleuserid
-    let googleuserid = serde_json::from_str(&googleuserid).unwrap();
     let reply = db.get_user_data(googleuserid).unwrap();
-    let ser_reply = serde_json::to_string(&reply).unwrap();
 
-    Ok(warp::reply::json(&ser_reply))
+    Ok(warp::reply::json(&reply))
 }
 
 pub fn post_token_handler(
@@ -48,9 +46,7 @@ pub fn post_token_handler(
         .unwrap()
         .insert(sessionid.sessionid.clone(), googleuserid);
 
-    let ser_sessionid = serde_json::to_string(&(sessionid)).unwrap();
-
-    Ok(warp::reply::json(&ser_sessionid))
+    Ok(warp::reply::json(&sessionid))
 }
 
 // TODO: finish websocket implementation
@@ -84,9 +80,7 @@ pub fn get_qr_handler(body: serde_json::Value, qr_codes: QrCodes, db: Database) 
         .unwrap()
         .insert(qr.qr_string.clone(), googleuserid.to_string());
 
-    let ser_qr = serde_json::to_string(&(qr)).unwrap();
-
-    Ok(warp::reply::json(&ser_qr))
+    Ok(warp::reply::json(&qr))
 }
 
 pub fn verify_cert_handler(body: serde_json::Value, db: Database, qr_codes: QrCodes) -> impl Reply {
