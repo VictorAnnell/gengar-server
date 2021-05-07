@@ -24,15 +24,33 @@ pub fn userdata_handler(body: serde_json::Value, db: Database) -> impl Reply {
     Ok(warp::reply::json(&ser_reply))
 }
 
-pub fn post_token_handler(client_id: String, token: GoogleToken) -> impl Reply {
+pub fn post_token_handler(
+    token: GoogleToken,
+    db: Database,
+    client_id: String,
+    session_ids: SessionIds,
+) -> impl Reply {
     let client = Client::new(&client_id);
 
-    let id_token = client.verify_id_token(&token.id_token);
+    let id_token = client.verify_id_token(&token.id_token).unwrap();
+    let googleuserid = id_token.get_claims().get_subject();
 
-    match id_token {
-        Ok(_) => id_token.unwrap().get_claims().get_subject(),
-        Err(_) => String::from("Err"),
-    }
+    if !db.user_exist(googleuserid.to_string()).unwrap() {
+        panic!()
+    };
+
+    let sessionid = SessionId::new();
+
+    session_ids.write().unwrap().remove_by_right(&googleuserid);
+
+    session_ids
+        .write()
+        .unwrap()
+        .insert(sessionid.sessionid.clone(), googleuserid);
+
+    let ser_sessionid = serde_json::to_string(&(sessionid)).unwrap();
+
+    Ok(warp::reply::json(&ser_sessionid))
 }
 
 // TODO: finish websocket implementation

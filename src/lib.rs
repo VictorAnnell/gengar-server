@@ -39,13 +39,13 @@ impl Default for QrString {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct SessionId {
-    id: String,
+    sessionid: String,
 }
 
 impl SessionId {
     pub fn new() -> Self {
         Self {
-            id: generate_rand_string(),
+            sessionid: generate_rand_string(),
         }
     }
 }
@@ -71,6 +71,7 @@ pub struct CertData {
 }
 
 type QrCodes = Arc<RwLock<BiMap<String, String>>>;
+type SessionIds = Arc<RwLock<BiMap<String, String>>>;
 
 /// Gengar user and vaccine certificate database.
 #[derive(Clone)]
@@ -184,8 +185,20 @@ fn with_qr_codes(
     warp::any().map(move || qr_codes.clone())
 }
 
+fn with_session_ids(
+    session_ids: SessionIds,
+) -> impl Filter<Extract = (SessionIds,), Error = Infallible> + Clone {
+    warp::any().map(move || session_ids.clone())
+}
+
 fn with_db(db: Database) -> impl Filter<Extract = (Database,), Error = Infallible> + Clone {
     warp::any().map(move || db.clone())
+}
+
+fn with_client_id(
+    client_id: String,
+) -> impl Filter<Extract = (String,), Error = Infallible> + Clone {
+    warp::any().map(move || client_id.clone())
 }
 
 /// Converts one row from the database as returned by [`get_user_data`](Database::get_user_data())
@@ -221,11 +234,16 @@ pub async fn start_server() {
     let db = Database::new();
 
     let qr_codes: QrCodes = Arc::new(RwLock::new(BiMap::new()));
+    let session_ids: SessionIds = Arc::new(RwLock::new(BiMap::new()));
 
     let route = warp::any()
         .and(user_certs_route(db.clone()))
         .or(user_data_route(db.clone()))
-        .or(post_token_route(client_id.clone()))
+        .or(post_token_route(
+            client_id.clone(),
+            db.clone(),
+            session_ids.clone(),
+        ))
         .or(websocket_route())
         .or(user_get_qr_string_route(qr_codes.clone(), db.clone()))
         .or(get_user_id_with_qr_string(qr_codes.clone()))
@@ -255,11 +273,18 @@ fn user_certs_route(db: Database) -> warp::filters::BoxedFilter<(impl Reply,)> {
 }
 
 //POST example.org/login
-fn post_token_route(client_id: String) -> warp::filters::BoxedFilter<(impl Reply,)> {
+fn post_token_route(
+    client_id: String,
+    db: Database,
+    session_ids: SessionIds,
+) -> warp::filters::BoxedFilter<(impl Reply,)> {
     warp::path("login")
         .and(warp::post())
         .and(warp::body::json())
-        .map(move |token: GoogleToken| handler::post_token_handler(client_id.clone(), token))
+        .and(with_db(db))
+        .and(with_client_id(client_id))
+        .and(with_session_ids(session_ids))
+        .map(handler::post_token_handler)
         .boxed()
 }
 
