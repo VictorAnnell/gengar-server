@@ -5,7 +5,7 @@ use mysql::{chrono::NaiveDate, prelude::Queryable, Pool};
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
+use std::{cmp::Ordering, hash::{Hash, Hasher}, sync::Arc};
 use std::sync::RwLock;
 use std::{convert::Infallible, env, net::ToSocketAddrs};
 use warp::{Filter, Reply};
@@ -19,21 +19,58 @@ pub struct GoogleToken {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct QrString {
+pub struct QrCode {
     qr_string: String,
+    scanned: bool,
 }
 
-impl QrString {
+impl QrCode {
     pub fn new() -> Self {
         Self {
             qr_string: generate_rand_string(),
+            scanned: false,
+        }
+    }
+    pub fn newcustom(qr_string: String) -> Self {
+        Self {
+            qr_string,
+            scanned: false,
         }
     }
 }
 
-impl Default for QrString {
+impl Default for QrCode {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+// equality only depends on the qr_string data
+impl PartialEq for QrCode {
+    fn eq(&self, other: &QrCode) -> bool {
+        self.qr_string == other.qr_string
+    }
+}
+
+impl Eq for QrCode {}
+
+impl PartialOrd for QrCode {
+    fn partial_cmp(&self, other: &QrCode) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+// ordering only depends on the qr_string data
+impl Ord for QrCode {
+    fn cmp(&self, other: &QrCode) -> Ordering {
+        self.qr_string.cmp(&other.qr_string)
+    }
+}
+
+// hash only depends on the qr_string data
+impl Hash for QrCode {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.qr_string.hash(state);
     }
 }
 
@@ -70,7 +107,7 @@ pub struct CertData {
     expirationdate: NaiveDate,
 }
 
-type QrCodes = Arc<RwLock<BiMap<String, String>>>;
+type QrCodes = Arc<RwLock<BiMap<QrCode, String>>>;
 type SessionIds = Arc<RwLock<BiMap<String, String>>>;
 
 /// Gengar user and vaccine certificate database.
