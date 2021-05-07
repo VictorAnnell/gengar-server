@@ -45,6 +45,9 @@ pub fn post_token_handler(
 ) -> impl Reply {
     let client = Client::new(&client_id);
 
+    println!("The rust struct looks like this:\n{:?}\n", token);
+    println!("idtoken string looks like this:\n{:?}\n", token.id_token);
+
     let id_token = client.verify_id_token(&token.id_token).unwrap();
     let googleuserid = id_token.get_claims().get_subject();
 
