@@ -286,7 +286,7 @@ pub async fn start_server() {
             session_ids.clone(),
         ))
         .or(websocket_route())
-        .or(user_get_qr_string_route(qr_codes.clone(), db.clone()))
+        .or(user_get_qr_string_route(qr_codes.clone(), db.clone(), session_ids.clone()))
         .or(get_user_id_with_qr_string(qr_codes.clone()))
         .or(verify_cert_route(db.clone(), qr_codes.clone()));
 
@@ -353,12 +353,14 @@ fn user_data_route(
 fn user_get_qr_string_route(
     qr_codes: QrCodes,
     db: Database,
+    session_ids: SessionIds,
 ) -> warp::filters::BoxedFilter<(impl Reply,)> {
     warp::path!("getqr")
         .and(warp::post())
         .and(warp::body::json())
         .and(with_qr_codes(qr_codes))
         .and(with_db(db))
+        .and(with_session_ids(session_ids))
         .map(handler::get_qr_handler)
         .boxed()
 }

@@ -62,7 +62,7 @@ pub fn post_token_handler(
     session_ids
         .write()
         .unwrap()
-        .insert(sessionid.sessionid.to_string(), googleuserid);
+        .insert(sessionid.sessionid.to_string(), googleuserid.to_string());
 
     Ok(warp::reply::json(&sessionid))
 }
@@ -81,11 +81,24 @@ pub fn websocket_handler(ws: warp::ws::Ws) -> impl Reply {
     })
 }
 
-pub fn get_qr_handler(body: serde_json::Value, qr_codes: QrCodes, db: Database) -> impl Reply {
-    let googleuserid = body["googleuserid"].as_str().unwrap();
+pub fn get_qr_handler(
+    body: serde_json::Value,
+    qr_codes: QrCodes,
+    db: Database,
+    session_ids: SessionIds,
+) -> impl Reply {
+    let session_id = body["sessionid"].as_str().unwrap();
+
+    let temp = session_ids.read().unwrap();
+    let googleuserid = temp
+        .get_by_left(&session_id.to_string())
+        .unwrap()
+        .to_string();
+
     if !db.user_exist(googleuserid.to_string()).unwrap() {
         panic!()
     };
+
     let qr = QrCode::new();
 
     qr_codes
