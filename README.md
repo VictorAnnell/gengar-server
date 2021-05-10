@@ -81,7 +81,7 @@ The server back-end to the [VaccMe mobile application][] written in Rust for the
 Build and run the project with cargo:
 
 ```shell
-$ cargo run --bin gengar
+cargo run
 ```
 
 Replace `run` with `build` if you want to build but not run.
