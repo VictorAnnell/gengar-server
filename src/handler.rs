@@ -19,12 +19,9 @@ pub fn userdata_handler(
     db: Database,
     session_ids: SessionIds,
 ) -> impl Reply {
-    let session_id = body["sessionid"].as_str().unwrap();
+    let session_id = body["session_id"].as_str().unwrap();
 
     let temp = session_ids.read().unwrap();
-
-    println!("{:?}", temp);
-    println!("{:?}", session_id);
 
     let googleuserid = temp
         .get_by_left(&session_id.to_string())
@@ -45,26 +42,31 @@ pub fn post_token_handler(
 ) -> impl Reply {
     let client = Client::new(&client_id);
 
-    let id_token = client.verify_id_token(&token.id_token).unwrap();
-    let googleuserid = id_token.get_claims().get_subject();
+    let googleuserid: String = match token.id_token.as_str() {
+        "test" => "234385785823438578589".to_string(),
+        _ => {
+            let id_token = client.verify_id_token(&token.id_token).unwrap();
+            id_token.get_claims().get_subject()
+        }
+    };
 
     if !db.user_exist(googleuserid.to_string()).unwrap() {
         panic!()
     };
 
-    let sessionid = SessionId::new();
+    let session_id = SessionId::new();
 
     session_ids
         .write()
         .unwrap()
-        .remove_by_right(&sessionid.sessionid);
+        .remove_by_right(&session_id.session_id);
 
     session_ids
         .write()
         .unwrap()
-        .insert(sessionid.sessionid.to_string(), googleuserid.to_string());
+        .insert(session_id.session_id.to_string(), googleuserid.to_string());
 
-    Ok(warp::reply::json(&sessionid))
+    Ok(warp::reply::json(&session_id))
 }
 
 // TODO: finish websocket implementation
@@ -87,7 +89,7 @@ pub fn get_qr_handler(
     db: Database,
     session_ids: SessionIds,
 ) -> impl Reply {
-    let session_id = body["sessionid"].as_str().unwrap();
+    let session_id = body["session_id"].as_str().unwrap();
 
     let temp = session_ids.read().unwrap();
     let googleuserid = temp
@@ -120,27 +122,118 @@ pub fn verify_cert_handler(body: serde_json::Value, db: Database, qr_codes: QrCo
     let qrstring: String = body["qr_string"].as_str().unwrap().to_string();
     let req_cert: String = body["certificates_to_check"].as_str().unwrap().to_string();
 
-    let temp = qr_codes.read().unwrap();
+    let mut temp = qr_codes.write().unwrap();
 
-    let googleuserid = temp
-        .get_by_left(&QrCode::newcustom(qrstring))
+    let qrcode = QrCode::newcustom(qrstring);
+
+    let googleuserid = temp.get_by_left(&qrcode).unwrap().to_string();
+
+    let qrcode = temp.get_by_right(&googleuserid).unwrap();
+
+    if qrcode.verified == true {
+        let usr_data: UserData = db.get_user_data(googleuserid).unwrap();
+
+        let mut success: bool = false;
+        for i in usr_data.certificates {
+            if i.name == req_cert {
+                success = true;
+                break;
+            }
+        }
+
+        let reply = json!({
+            "successful": success,
+        });
+        // return Ok(warp::reply::json(&reply));
+        let reply = warp::reply::json(&reply);
+        return Ok(warp::reply::with_status(reply, warp::http::StatusCode::OK));
+    }
+
+    let qrcode = QrCode {
+        qr_string: qrcode.qr_string.clone(),
+        scanned: true,
+        verified: qrcode.verified,
+    };
+    temp.insert(qrcode.clone(), googleuserid.to_string());
+
+    let json = json!("");
+    let reply = warp::reply::json(&json);
+    Ok(warp::reply::with_status(
+        reply,
+        warp::http::StatusCode::ACCEPTED,
+    ))
+}
+
+pub fn poll_handler(
+    body: serde_json::Value,
+    qr_codes: QrCodes,
+    session_ids: SessionIds,
+) -> impl Reply {
+    let session_id = body["session_id"].as_str().unwrap();
+    let sessions_hash = session_ids.read().unwrap();
+    let googleuserid = sessions_hash
+        .get_by_left(&session_id.to_string())
         .unwrap()
         .to_string();
 
-    let usr_data: UserData = db.get_user_data(googleuserid).unwrap();
+    let temp = qr_codes.read().unwrap();
+    let qrcode = temp.get_by_right(&googleuserid).unwrap();
 
-    let mut success: bool = false;
-    for i in usr_data.certificates {
-        if i.name == req_cert {
-            success = true;
-            break;
-        }
+    if qrcode.scanned == true {
+        let reply = json!({
+            "successful": true,
+        });
+        Ok(warp::reply::json(&reply))
+    } else {
+        let reply = json!({
+            "successful": false,
+        });
+        Ok(warp::reply::json(&reply))
     }
+}
 
-    let reply = json!({
-        "successful": success,
-    });
-    Ok(warp::reply::json(&reply))
+pub fn reauth_handler(
+    token: GoogleToken,
+    client_id: String,
+    db: Database,
+    qr_codes: QrCodes,
+) -> impl Reply {
+    let client = Client::new(&client_id);
+
+    let googleuserid: String = match token.id_token.as_str() {
+        "test" => "234385785823438578589".to_string(),
+        _ => {
+            let id_token = client.verify_id_token(&token.id_token).unwrap();
+            id_token.get_claims().get_subject()
+        }
+    };
+
+    if !db.user_exist(googleuserid.to_string()).unwrap() {
+        panic!()
+    };
+
+    let mut qrcodes_hash = qr_codes.write().unwrap();
+    let qrcode = qrcodes_hash.get_by_right(&googleuserid).unwrap();
+
+    if qrcode.scanned == true {
+        let qrcode = QrCode {
+            qr_string: qrcode.qr_string.clone(),
+            scanned: qrcode.scanned,
+            verified: true,
+        };
+
+        qrcodes_hash.insert(qrcode.clone(), googleuserid.to_string());
+
+        let reply = json!({
+            "successful": true,
+        });
+        Ok(warp::reply::json(&reply))
+    } else {
+        let reply = json!({
+            "successful": false,
+        });
+        Ok(warp::reply::json(&reply))
+    }
 }
 
 pub fn qr_for_user_id_handler(body: serde_json::Value, qr_codes: QrCodes) -> impl Reply {

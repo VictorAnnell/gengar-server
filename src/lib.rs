@@ -26,6 +26,7 @@ pub struct GoogleToken {
 pub struct QrCode {
     qr_string: String,
     scanned: bool,
+    verified: bool,
 }
 
 impl QrCode {
@@ -33,12 +34,14 @@ impl QrCode {
         Self {
             qr_string: generate_rand_string(),
             scanned: false,
+            verified: false,
         }
     }
     pub fn newcustom(qr_string: String) -> Self {
         Self {
             qr_string,
             scanned: false,
+            verified: false,
         }
     }
 }
@@ -80,13 +83,13 @@ impl Hash for QrCode {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct SessionId {
-    sessionid: String,
+    session_id: String,
 }
 
 impl SessionId {
     pub fn new() -> Self {
         Self {
-            sessionid: generate_rand_string(),
+            session_id: generate_rand_string(),
         }
     }
 }
@@ -288,7 +291,9 @@ pub async fn start_server() {
         .or(websocket_route())
         .or(user_get_qr_string_route(qr_codes.clone(), db.clone(), session_ids.clone()))
         .or(get_user_id_with_qr_string(qr_codes.clone()))
-        .or(verify_cert_route(db.clone(), qr_codes.clone()));
+        .or(verify_cert_route(db.clone(), qr_codes.clone()))
+        .or(poll_route(qr_codes.clone(), session_ids.clone()))
+        .or(reauth_route(client_id.clone(), db.clone(), qr_codes.clone()));
 
     let route = route.with(warp::log(""));
 
@@ -396,6 +401,31 @@ fn verify_cert_route(db: Database, qr_codes: QrCodes) -> warp::filters::BoxedFil
         .and(with_db(db))
         .and(with_qr_codes(qr_codes))
         .map(handler::verify_cert_handler)
+        .boxed()
+}
+
+fn poll_route(qr_codes: QrCodes, session_ids: SessionIds) -> warp::filters::BoxedFilter<(impl Reply,)> {
+    warp::path!("poll")
+        .and(warp::post())
+        .and(warp::body::json())
+        .and(with_qr_codes(qr_codes))
+        .and(with_session_ids(session_ids))
+        .map(handler::poll_handler)
+        .boxed()
+}
+
+fn reauth_route(
+    client_id: String,
+    db: Database,
+    qr_codes: QrCodes,
+) -> warp::filters::BoxedFilter<(impl Reply,)> {
+    warp::path("reauth")
+        .and(warp::post())
+        .and(warp::body::json())
+        .and(with_client_id(client_id))
+        .and(with_db(db))
+        .and(with_qr_codes(qr_codes))
+        .map(handler::reauth_handler)
         .boxed()
 }
 
