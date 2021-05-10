@@ -289,11 +289,19 @@ pub async fn start_server() {
             session_ids.clone(),
         ))
         .or(websocket_route())
-        .or(user_get_qr_string_route(qr_codes.clone(), db.clone(), session_ids.clone()))
+        .or(user_get_qr_string_route(
+            qr_codes.clone(),
+            db.clone(),
+            session_ids.clone(),
+        ))
         .or(get_user_id_with_qr_string(qr_codes.clone()))
         .or(verify_cert_route(db.clone(), qr_codes.clone()))
         .or(poll_route(qr_codes.clone(), session_ids.clone()))
-        .or(reauth_route(client_id.clone(), db.clone(), qr_codes.clone()));
+        .or(reauth_route(
+            client_id.clone(),
+            db.clone(),
+            qr_codes.clone(),
+        ));
 
     let route = route.with(warp::log(""));
 
@@ -404,7 +412,10 @@ fn verify_cert_route(db: Database, qr_codes: QrCodes) -> warp::filters::BoxedFil
         .boxed()
 }
 
-fn poll_route(qr_codes: QrCodes, session_ids: SessionIds) -> warp::filters::BoxedFilter<(impl Reply,)> {
+fn poll_route(
+    qr_codes: QrCodes,
+    session_ids: SessionIds,
+) -> warp::filters::BoxedFilter<(impl Reply,)> {
     warp::path!("poll")
         .and(warp::post())
         .and(warp::body::json())

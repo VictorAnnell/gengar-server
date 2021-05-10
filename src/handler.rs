@@ -64,7 +64,7 @@ pub fn post_token_handler(
     session_ids
         .write()
         .unwrap()
-        .insert(session_id.session_id.to_string(), googleuserid.to_string());
+        .insert(session_id.session_id.to_string(), googleuserid);
 
     Ok(warp::reply::json(&session_id))
 }
@@ -103,15 +103,9 @@ pub fn get_qr_handler(
 
     let qr = QrCode::new();
 
-    qr_codes
-        .write()
-        .unwrap()
-        .remove_by_right(&googleuserid.to_string());
+    qr_codes.write().unwrap().remove_by_right(&googleuserid);
 
-    qr_codes
-        .write()
-        .unwrap()
-        .insert(qr.clone(), googleuserid.to_string());
+    qr_codes.write().unwrap().insert(qr.clone(), googleuserid);
 
     Ok(warp::reply::json(&json!({
         "qr_string": qr.qr_string
@@ -130,7 +124,7 @@ pub fn verify_cert_handler(body: serde_json::Value, db: Database, qr_codes: QrCo
 
     let qrcode = temp.get_by_right(&googleuserid).unwrap();
 
-    if qrcode.verified == true {
+    if qrcode.verified {
         let usr_data: UserData = db.get_user_data(googleuserid).unwrap();
 
         let mut success: bool = false;
@@ -154,7 +148,7 @@ pub fn verify_cert_handler(body: serde_json::Value, db: Database, qr_codes: QrCo
         scanned: true,
         verified: qrcode.verified,
     };
-    temp.insert(qrcode.clone(), googleuserid.to_string());
+    temp.insert(qrcode, googleuserid.to_string());
 
     let json = json!("");
     let reply = warp::reply::json(&json);
@@ -179,7 +173,7 @@ pub fn poll_handler(
     let temp = qr_codes.read().unwrap();
     let qrcode = temp.get_by_right(&googleuserid).unwrap();
 
-    if qrcode.scanned == true {
+    if qrcode.scanned {
         let reply = json!({
             "successful": true,
         });
@@ -215,14 +209,14 @@ pub fn reauth_handler(
     let mut qrcodes_hash = qr_codes.write().unwrap();
     let qrcode = qrcodes_hash.get_by_right(&googleuserid).unwrap();
 
-    if qrcode.scanned == true {
+    if qrcode.scanned {
         let qrcode = QrCode {
             qr_string: qrcode.qr_string.clone(),
             scanned: qrcode.scanned,
             verified: true,
         };
 
-        qrcodes_hash.insert(qrcode.clone(), googleuserid.to_string());
+        qrcodes_hash.insert(qrcode, googleuserid.to_string());
 
         let reply = json!({
             "successful": true,
