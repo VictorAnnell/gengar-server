@@ -239,10 +239,16 @@ fn with_db(db: Database) -> impl Filter<Extract = (Database,), Error = Infallibl
     warp::any().map(move || db.clone())
 }
 
-fn with_client_id(
-    client_id: String,
+fn with_client_id1(
+    client_id1: String,
 ) -> impl Filter<Extract = (String,), Error = Infallible> + Clone {
-    warp::any().map(move || client_id.clone())
+    warp::any().map(move || client_id1.clone())
+}
+
+fn with_client_id2(
+    client_id2: String,
+) -> impl Filter<Extract = (String,), Error = Infallible> + Clone {
+    warp::any().map(move || client_id2.clone())
 }
 
 /// Converts one row from the database as returned by [`get_user_data`](Database::get_user_data())
@@ -273,7 +279,16 @@ pub async fn start_server() {
         .next()
         .unwrap();
 
-    let client_id = env::var("CLIENT_ID").expect("CLIENT_ID must be set");
+    let client_id1 = env::var("CLIENT_ID").expect("CLIENT_ID must be set");
+    let client_id2 = match env::var("CLIENT_ID2") {
+        Ok(var) => var,
+        Err(_) => {
+            eprintln!("CLIENT_ID2 not set. Only using one Client ID");
+            client_id1.clone()
+        }
+    };
+
+    // let client_id2 = env::var("CLIENT_ID2").unwrap_or(|| eprintln!("CLIENT_ID2 not set. Only using one Client ID"); client_id1);
 
     let db = Database::new();
 
@@ -284,7 +299,8 @@ pub async fn start_server() {
         .and(user_certs_route(db.clone()))
         .or(user_data_route(db.clone(), session_ids.clone()))
         .or(post_token_route(
-            client_id.clone(),
+            client_id1.clone(),
+            client_id2.clone(),
             db.clone(),
             session_ids.clone(),
         ))
@@ -298,7 +314,8 @@ pub async fn start_server() {
         .or(verify_cert_route(db.clone(), qr_codes.clone()))
         .or(poll_route(qr_codes.clone(), session_ids.clone()))
         .or(reauth_route(
-            client_id.clone(),
+            client_id1.clone(),
+            client_id2.clone(),
             db.clone(),
             qr_codes.clone(),
         ));
@@ -328,7 +345,8 @@ fn user_certs_route(db: Database) -> warp::filters::BoxedFilter<(impl Reply,)> {
 
 //POST example.org/getsessionid
 fn post_token_route(
-    client_id: String,
+    client_id1: String,
+    client_id2: String,
     db: Database,
     session_ids: SessionIds,
 ) -> warp::filters::BoxedFilter<(impl Reply,)> {
@@ -336,7 +354,8 @@ fn post_token_route(
         .and(warp::post())
         .and(warp::body::json())
         .and(with_db(db))
-        .and(with_client_id(client_id))
+        .and(with_client_id1(client_id1))
+        .and(with_client_id2(client_id2))
         .and(with_session_ids(session_ids))
         .map(handler::post_token_handler)
         .boxed()
@@ -426,14 +445,16 @@ fn poll_route(
 }
 
 fn reauth_route(
-    client_id: String,
+    client_id1: String,
+    client_id2: String,
     db: Database,
     qr_codes: QrCodes,
 ) -> warp::filters::BoxedFilter<(impl Reply,)> {
     warp::path("reauth")
         .and(warp::post())
         .and(warp::body::json())
-        .and(with_client_id(client_id))
+        .and(with_client_id1(client_id1))
+        .and(with_client_id2(client_id2))
         .and(with_db(db))
         .and(with_qr_codes(qr_codes))
         .map(handler::reauth_handler)

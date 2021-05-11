@@ -37,15 +37,19 @@ pub fn userdata_handler(
 pub fn post_token_handler(
     token: GoogleToken,
     db: Database,
-    client_id: String,
+    client_id1: String,
+    client_id2: String,
     session_ids: SessionIds,
 ) -> impl Reply {
-    let client = Client::new(&client_id);
+    let client1 = Client::new(&client_id1);
+    let client2 = Client::new(&client_id2);
 
     let googleuserid: String = match token.id_token.as_str() {
         "test" => "234385785823438578589".to_string(),
         _ => {
-            let id_token = client.verify_id_token(&token.id_token).unwrap();
+            let id_token = client1
+                .verify_id_token(&token.id_token)
+                .unwrap_or_else(|_| client2.verify_id_token(&token.id_token).unwrap());
             id_token.get_claims().get_subject()
         }
     };
@@ -188,16 +192,20 @@ pub fn poll_handler(
 
 pub fn reauth_handler(
     token: GoogleToken,
-    client_id: String,
+    client_id1: String,
+    client_id2: String,
     db: Database,
     qr_codes: QrCodes,
 ) -> impl Reply {
-    let client = Client::new(&client_id);
+    let client1 = Client::new(&client_id1);
+    let client2 = Client::new(&client_id2);
 
     let googleuserid: String = match token.id_token.as_str() {
         "test" => "234385785823438578589".to_string(),
         _ => {
-            let id_token = client.verify_id_token(&token.id_token).unwrap();
+            let id_token = client1
+                .verify_id_token(&token.id_token)
+                .unwrap_or_else(|_| client2.verify_id_token(&token.id_token).unwrap());
             id_token.get_claims().get_subject()
         }
     };
