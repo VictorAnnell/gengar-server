@@ -173,7 +173,7 @@ pub fn poll_handler(
     let temp = qr_codes.read().unwrap();
     let qrcode = temp.get_by_right(&googleuserid).unwrap();
 
-    if qrcode.scanned {
+    if qrcode.scanned & !qrcode.verified {
         let reply = json!({
             "successful": true,
         });
