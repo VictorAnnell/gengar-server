@@ -120,13 +120,21 @@ pub fn verify_cert_handler(body: serde_json::Value, db: Database, qr_codes: QrCo
     let qrstring: String = body["qr_string"].as_str().unwrap().to_string();
     let req_cert: String = body["certificates_to_check"].as_str().unwrap().to_string();
 
-    let temp = qr_codes.read().unwrap();
-
     let qrcode = QrCode::newcustom(qrstring);
 
-    let googleuserid = temp.get_by_left(&qrcode).unwrap().to_string();
+    let googleuserid = qr_codes
+        .read()
+        .unwrap()
+        .get_by_left(&qrcode)
+        .unwrap()
+        .to_string();
 
-    let qrcode = temp.get_by_right(&googleuserid).unwrap();
+    let qrcode = qr_codes
+        .read()
+        .unwrap()
+        .get_by_right(&googleuserid)
+        .unwrap()
+        .clone();
 
     if qrcode.verified {
         let usr_data: UserData = db.get_user_data(googleuserid.clone()).unwrap();
@@ -154,10 +162,7 @@ pub fn verify_cert_handler(body: serde_json::Value, db: Database, qr_codes: QrCo
         scanned: true,
         verified: qrcode.verified,
     };
-    qr_codes
-        .write()
-        .unwrap()
-        .insert(qrcode, googleuserid.to_string());
+    qr_codes.write().unwrap().insert(qrcode, googleuserid);
 
     let json = json!("");
     let reply = warp::reply::json(&json);
