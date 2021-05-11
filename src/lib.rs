@@ -5,7 +5,7 @@ use mysql::{chrono::NaiveDate, prelude::Queryable, Pool};
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
-use std::sync::RwLock;
+use std::{sync::RwLock, time::{Duration, Instant}};
 use std::{
     cmp::Ordering,
     hash::{Hash, Hasher},
@@ -22,11 +22,12 @@ pub struct GoogleToken {
     id_token: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct QrCode {
     qr_string: String,
     scanned: bool,
     verified: bool,
+    created: Instant,
 }
 
 impl QrCode {
@@ -35,6 +36,7 @@ impl QrCode {
             qr_string: generate_rand_string(),
             scanned: false,
             verified: false,
+            created: Instant::now(),
         }
     }
     pub fn newcustom(qr_string: String) -> Self {
@@ -42,7 +44,11 @@ impl QrCode {
             qr_string,
             scanned: false,
             verified: false,
+            created: Instant::now(),
         }
+    }
+    fn expired(&self) -> bool {
+        self.created.elapsed() > Duration::from_secs(60)
     }
 }
 

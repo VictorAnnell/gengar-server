@@ -105,11 +105,23 @@ pub fn get_qr_handler(
         panic!()
     };
 
-    let qr = QrCode::new();
-
-    qr_codes.write().unwrap().remove_by_right(&googleuserid);
-
-    qr_codes.write().unwrap().insert(qr.clone(), googleuserid);
+    let mut qr_codes_map = qr_codes.write().unwrap();
+    let qr = match qr_codes_map.get_by_right(&googleuserid) {
+        Some(oldqr) => {
+            if oldqr.expired() {
+                let qr = QrCode::new();
+                qr_codes_map.insert(qr.clone(), googleuserid);
+                qr
+            } else {
+                oldqr.clone()
+            }
+        }
+        None => {
+            let qr = QrCode::new();
+            qr_codes_map.insert(qr.clone(), googleuserid);
+            qr
+        }
+    };
 
     Ok(warp::reply::json(&json!({
         "qr_string": qr.qr_string
@@ -161,6 +173,7 @@ pub fn verify_cert_handler(body: serde_json::Value, db: Database, qr_codes: QrCo
         qr_string: qrcode.qr_string.clone(),
         scanned: true,
         verified: qrcode.verified,
+        created: Instant::now(),
     };
     qr_codes.write().unwrap().insert(qrcode, googleuserid);
 
@@ -227,11 +240,12 @@ pub fn reauth_handler(
     let mut qrcodes_hash = qr_codes.write().unwrap();
     let qrcode = qrcodes_hash.get_by_right(&googleuserid).unwrap();
 
-    if qrcode.scanned {
+    if qrcode.scanned && !qrcode.expired() {
         let qrcode = QrCode {
             qr_string: qrcode.qr_string.clone(),
             scanned: qrcode.scanned,
             verified: true,
+            created: qrcode.created,
         };
 
         qrcodes_hash.insert(qrcode, googleuserid.to_string());
