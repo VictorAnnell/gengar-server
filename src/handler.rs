@@ -205,13 +205,15 @@ pub fn verify_cert_handler(
         return Ok(warp::reply::with_status(reply, warp::http::StatusCode::OK));
     }
 
-    let qrcode = QrCode {
-        qr_string: qrcode.qr_string.clone(),
-        scanned: true,
-        verified: qrcode.verified,
-        created: Instant::now(),
-    };
-    qr_codes.write().unwrap().insert(qrcode, googleuserid);
+    if !qrcode.scanned {
+        let qrcode = QrCode {
+            qr_string: qrcode.qr_string.clone(),
+            scanned: true,
+            verified: qrcode.verified,
+            created: Instant::now(),
+        };
+        qr_codes.write().unwrap().insert(qrcode, googleuserid);
+    }
 
     let json = json!("");
     let reply = warp::reply::json(&json);
