@@ -141,7 +141,30 @@ pub fn get_qr_handler(
     ))
 }
 
-pub fn verify_cert_handler(body: serde_json::Value, db: Database, qr_codes: QrCodes) -> impl Reply {
+pub fn verify_cert_handler(
+    body: serde_json::Value,
+    db: Database,
+    qr_codes: QrCodes,
+    session_ids: SessionIds,
+) -> impl Reply {
+    let session_id = body["session_id"].as_str().unwrap();
+    let temp = session_ids.read().unwrap();
+    let googleuserid = match temp.get_by_left(&session_id.to_string()) {
+        Some(id) => id.to_string(),
+        None => {
+            let json = json!("");
+            let reply = warp::reply::json(&json);
+            return Ok(warp::reply::with_status(
+                reply,
+                warp::http::StatusCode::UNAUTHORIZED,
+            ));
+        }
+    };
+
+    if !db.user_exist(googleuserid).unwrap() {
+        panic!()
+    };
+
     let qrstring: String = body["qr_string"].as_str().unwrap().to_string();
     let req_cert: String = body["certificates_to_check"].as_str().unwrap().to_string();
 

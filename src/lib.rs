@@ -317,7 +317,7 @@ pub async fn start_server() {
             session_ids.clone(),
         ))
         .or(get_user_id_with_qr_string(qr_codes.clone()))
-        .or(verify_cert_route(db.clone(), qr_codes.clone()))
+        .or(verify_cert_route(db.clone(), qr_codes.clone(), session_ids.clone()))
         .or(poll_route(qr_codes.clone(), session_ids.clone()))
         .or(reauth_route(
             client_id1.clone(),
@@ -427,12 +427,13 @@ fn websocket_route() -> warp::filters::BoxedFilter<(impl Reply,)> {
 //    .map(handler::post_session_id).boxed()
 // }
 
-fn verify_cert_route(db: Database, qr_codes: QrCodes) -> warp::filters::BoxedFilter<(impl Reply,)> {
+fn verify_cert_route(db: Database, qr_codes: QrCodes, session_ids: SessionIds) -> warp::filters::BoxedFilter<(impl Reply,)> {
     warp::path!("verify")
         .and(warp::post())
         .and(warp::body::json())
         .and(with_db(db))
         .and(with_qr_codes(qr_codes))
+        .and(with_session_ids(session_ids))
         .map(handler::verify_cert_handler)
         .boxed()
 }
