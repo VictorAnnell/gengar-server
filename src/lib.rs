@@ -5,13 +5,16 @@ use mysql::{chrono::NaiveDate, prelude::Queryable, Pool};
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
-use std::{sync::RwLock, time::{Duration, Instant}};
 use std::{
     cmp::Ordering,
     hash::{Hash, Hasher},
     sync::Arc,
 };
 use std::{convert::Infallible, env, net::ToSocketAddrs};
+use std::{
+    sync::RwLock,
+    time::{Duration, Instant},
+};
 use warp::{Filter, Reply};
 
 pub mod handler;
@@ -317,7 +320,11 @@ pub async fn start_server() {
             session_ids.clone(),
         ))
         .or(get_user_id_with_qr_string(qr_codes.clone()))
-        .or(verify_cert_route(db.clone(), qr_codes.clone(), session_ids.clone()))
+        .or(verify_cert_route(
+            db.clone(),
+            qr_codes.clone(),
+            session_ids.clone(),
+        ))
         .or(poll_route(qr_codes.clone(), session_ids.clone()))
         .or(reauth_route(
             client_id1.clone(),
@@ -427,7 +434,11 @@ fn websocket_route() -> warp::filters::BoxedFilter<(impl Reply,)> {
 //    .map(handler::post_session_id).boxed()
 // }
 
-fn verify_cert_route(db: Database, qr_codes: QrCodes, session_ids: SessionIds) -> warp::filters::BoxedFilter<(impl Reply,)> {
+fn verify_cert_route(
+    db: Database,
+    qr_codes: QrCodes,
+    session_ids: SessionIds,
+) -> warp::filters::BoxedFilter<(impl Reply,)> {
     warp::path!("verify")
         .and(warp::post())
         .and(warp::body::json())
@@ -552,15 +563,10 @@ mod tests {
     #[test]
     fn user_exist() {
         let db = Database::new();
-        assert_eq!(
-            db.user_exist(String::from("234385785823438578589"))
-                .unwrap(),
-            true
-        );
-        assert_eq!(
-            db.user_exist(String::from("nonexistant_user")).unwrap(),
-            false
-        );
+        assert!(db
+            .user_exist(String::from("234385785823438578589"))
+            .unwrap());
+        assert!(!db.user_exist(String::from("nonexistant_user")).unwrap());
     }
 
     #[test]
