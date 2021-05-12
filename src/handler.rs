@@ -170,12 +170,15 @@ pub fn verify_cert_handler(
 
     let qrcode = QrCode::newcustom(qrstring);
 
-    let googleuserid = qr_codes
-        .read()
-        .unwrap()
-        .get_by_left(&qrcode)
-        .unwrap()
-        .to_string();
+    let googleuserid = match qr_codes.read().unwrap().get_by_left(&qrcode) {
+        Some(v) => v.to_string(),
+        None => {
+            return Ok(warp::reply::with_status(
+                warp::reply::json(&String::from("BAD_REQUEST")),
+                warp::http::StatusCode::BAD_REQUEST,
+            ))
+        }
+    };
 
     let qrcode = qr_codes
         .read()
