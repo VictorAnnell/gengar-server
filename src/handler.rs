@@ -37,10 +37,7 @@ pub fn userdata_handler(
     //deserilze googleuserid
     let reply = db.get_user_data(googleuserid).unwrap();
     let reply = warp::reply::json(&reply);
-    Ok(warp::reply::with_status(
-        reply,
-        warp::http::StatusCode::ACCEPTED,
-    ))
+    Ok(warp::reply::with_status(reply, warp::http::StatusCode::OK))
 }
 
 pub fn post_token_handler(
