@@ -53,9 +53,20 @@ pub fn post_token_handler(
     let googleuserid: String = match token.id_token.as_str() {
         "test" => "234385785823438578589".to_string(),
         _ => {
-            let id_token = client1
+            let id_token = match client1
                 .verify_id_token(&token.id_token)
-                .unwrap_or_else(|_| client2.verify_id_token(&token.id_token).unwrap());
+                .or_else(|_| client2.verify_id_token(&token.id_token))
+            {
+                Ok(id) => id,
+                Err(_) => {
+                    let json = json!("");
+                    let reply = warp::reply::json(&json);
+                    return Ok(warp::reply::with_status(
+                        reply,
+                        warp::http::StatusCode::UNAUTHORIZED,
+                    ));
+                }
+            };
             id_token.get_claims().get_subject()
         }
     };
@@ -76,7 +87,11 @@ pub fn post_token_handler(
         .unwrap()
         .insert(session_id.session_id.to_string(), googleuserid);
 
-    Ok(warp::reply::json(&session_id))
+    // Ok(warp::reply::json(&session_id))
+    Ok(warp::reply::with_status(
+        warp::reply::json(&session_id),
+        warp::http::StatusCode::OK,
+    ))
 }
 
 // TODO: finish websocket implementation
@@ -276,9 +291,20 @@ pub fn reauth_handler(
     let googleuserid: String = match token.id_token.as_str() {
         "test" => "234385785823438578589".to_string(),
         _ => {
-            let id_token = client1
+            let id_token = match client1
                 .verify_id_token(&token.id_token)
-                .unwrap_or_else(|_| client2.verify_id_token(&token.id_token).unwrap());
+                .or_else(|_| client2.verify_id_token(&token.id_token))
+            {
+                Ok(id) => id,
+                Err(_) => {
+                    let json = json!("");
+                    let reply = warp::reply::json(&json);
+                    return Ok(warp::reply::with_status(
+                        reply,
+                        warp::http::StatusCode::UNAUTHORIZED,
+                    ));
+                }
+            };
             id_token.get_claims().get_subject()
         }
     };
@@ -303,12 +329,20 @@ pub fn reauth_handler(
         let reply = json!({
             "successful": true,
         });
-        Ok(warp::reply::json(&reply))
+        // Ok(warp::reply::json(&reply))
+        Ok(warp::reply::with_status(
+            warp::reply::json(&reply),
+            warp::http::StatusCode::OK,
+        ))
     } else {
         let reply = json!({
             "successful": false,
         });
-        Ok(warp::reply::json(&reply))
+        // Ok(warp::reply::json(&reply))
+        Ok(warp::reply::with_status(
+            warp::reply::json(&reply),
+            warp::http::StatusCode::OK,
+        ))
     }
 }
 
