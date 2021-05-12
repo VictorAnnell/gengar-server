@@ -249,7 +249,7 @@ pub fn poll_handler(
     let qrcode = temp.get_by_right(&googleuserid).unwrap();
 
     let reply;
-    if qrcode.scanned & !qrcode.verified {
+    if qrcode.scanned && !qrcode.verified && !qrcode.expired() {
         let json = json!({
             "successful": true,
         });
