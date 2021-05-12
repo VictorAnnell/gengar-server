@@ -19,8 +19,11 @@ pub fn userdata_handler(
     db: Database,
     session_ids: SessionIds,
 ) -> impl Reply {
-    let session_id = match body["session_id"].as_str() {
-        Some(id) => id,
+    let session_id = body["session_id"].as_str().unwrap();
+    let temp = session_ids.read().unwrap();
+
+    let googleuserid = match temp.get_by_left(&session_id.to_string()) {
+        Some(id) => id.to_string(),
         None => {
             let json = json!("");
             let reply = warp::reply::json(&json);
@@ -30,17 +33,14 @@ pub fn userdata_handler(
             ));
         }
     };
-    let temp = session_ids.read().unwrap();
-
-    let googleuserid = temp
-        .get_by_left(&session_id.to_string())
-        .unwrap()
-        .to_string();
 
     //deserilze googleuserid
     let reply = db.get_user_data(googleuserid).unwrap();
     let reply = warp::reply::json(&reply);
-    Ok(warp::reply::with_status(reply, warp::http::StatusCode::OK))
+    Ok(warp::reply::with_status(
+        reply,
+        warp::http::StatusCode::ACCEPTED,
+    ))
 }
 
 pub fn post_token_handler(
@@ -102,8 +102,10 @@ pub fn get_qr_handler(
     db: Database,
     session_ids: SessionIds,
 ) -> impl Reply {
-    let session_id = match body["session_id"].as_str() {
-        Some(id) => id,
+    let session_id = body["session_id"].as_str().unwrap();
+    let temp = session_ids.read().unwrap();
+    let googleuserid = match temp.get_by_left(&session_id.to_string()) {
+        Some(id) => id.to_string(),
         None => {
             let json = json!("");
             let reply = warp::reply::json(&json);
@@ -113,12 +115,6 @@ pub fn get_qr_handler(
             ));
         }
     };
-
-    let temp = session_ids.read().unwrap();
-    let googleuserid = temp
-        .get_by_left(&session_id.to_string())
-        .unwrap()
-        .to_string();
 
     if !db.user_exist(googleuserid.to_string()).unwrap() {
         panic!()
@@ -210,8 +206,10 @@ pub fn poll_handler(
     qr_codes: QrCodes,
     session_ids: SessionIds,
 ) -> impl Reply {
-    let session_id = match body["session_id"].as_str() {
-        Some(id) => id,
+    let session_id = body["session_id"].as_str().unwrap();
+    let temp = session_ids.read().unwrap();
+    let googleuserid = match temp.get_by_left(&session_id.to_string()) {
+        Some(id) => id.to_string(),
         None => {
             let json = json!("");
             let reply = warp::reply::json(&json);
@@ -221,11 +219,6 @@ pub fn poll_handler(
             ));
         }
     };
-    let sessions_hash = session_ids.read().unwrap();
-    let googleuserid = sessions_hash
-        .get_by_left(&session_id.to_string())
-        .unwrap()
-        .to_string();
 
     let temp = qr_codes.read().unwrap();
     let qrcode = temp.get_by_right(&googleuserid).unwrap();
