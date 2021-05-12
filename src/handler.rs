@@ -209,7 +209,7 @@ pub fn verify_cert_handler(
         qr_string: qrcode.qr_string.clone(),
         scanned: true,
         verified: qrcode.verified,
-        created: Instant::now() - Duration::from_secs(40),
+        created: Instant::now(),
     };
     qr_codes.write().unwrap().insert(qrcode, googleuserid);
 

@@ -51,7 +51,11 @@ impl QrCode {
         }
     }
     pub fn expired(&self) -> bool {
-        self.created.elapsed() > Duration::from_secs(20)
+        if self.scanned {
+            self.created.elapsed() > Duration::from_secs(20)
+        } else {
+            self.created.elapsed() > Duration::from_secs(60)
+        }
     }
 }
 
