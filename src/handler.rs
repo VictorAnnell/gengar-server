@@ -19,8 +19,17 @@ pub fn userdata_handler(
     db: Database,
     session_ids: SessionIds,
 ) -> impl Reply {
-    let session_id = body["session_id"].as_str().unwrap();
-
+    let session_id = match body["session_id"].as_str() {
+        Some(id) => id,
+        None => {
+            let json = json!("");
+            let reply = warp::reply::json(&json);
+            return Ok(warp::reply::with_status(
+                reply,
+                warp::http::StatusCode::UNAUTHORIZED,
+            ));
+        }
+    };
     let temp = session_ids.read().unwrap();
 
     let googleuserid = temp
@@ -30,8 +39,8 @@ pub fn userdata_handler(
 
     //deserilze googleuserid
     let reply = db.get_user_data(googleuserid).unwrap();
-
-    Ok(warp::reply::json(&reply))
+    let reply = warp::reply::json(&reply);
+    Ok(warp::reply::with_status(reply, warp::http::StatusCode::OK))
 }
 
 pub fn post_token_handler(
@@ -93,7 +102,17 @@ pub fn get_qr_handler(
     db: Database,
     session_ids: SessionIds,
 ) -> impl Reply {
-    let session_id = body["session_id"].as_str().unwrap();
+    let session_id = match body["session_id"].as_str() {
+        Some(id) => id,
+        None => {
+            let json = json!("");
+            let reply = warp::reply::json(&json);
+            return Ok(warp::reply::with_status(
+                reply,
+                warp::http::StatusCode::UNAUTHORIZED,
+            ));
+        }
+    };
 
     let temp = session_ids.read().unwrap();
     let googleuserid = temp
@@ -123,9 +142,10 @@ pub fn get_qr_handler(
         }
     };
 
-    Ok(warp::reply::json(&json!({
-        "qr_string": qr.qr_string
-    })))
+    Ok(warp::reply::with_status(
+        warp::reply::json(&json!({ "qr_string": qr.qr_string })),
+        warp::http::StatusCode::OK,
+    ))
 }
 
 pub fn verify_cert_handler(body: serde_json::Value, db: Database, qr_codes: QrCodes) -> impl Reply {
@@ -190,7 +210,17 @@ pub fn poll_handler(
     qr_codes: QrCodes,
     session_ids: SessionIds,
 ) -> impl Reply {
-    let session_id = body["session_id"].as_str().unwrap();
+    let session_id = match body["session_id"].as_str() {
+        Some(id) => id,
+        None => {
+            let json = json!("");
+            let reply = warp::reply::json(&json);
+            return Ok(warp::reply::with_status(
+                reply,
+                warp::http::StatusCode::UNAUTHORIZED,
+            ));
+        }
+    };
     let sessions_hash = session_ids.read().unwrap();
     let googleuserid = sessions_hash
         .get_by_left(&session_id.to_string())
@@ -200,17 +230,19 @@ pub fn poll_handler(
     let temp = qr_codes.read().unwrap();
     let qrcode = temp.get_by_right(&googleuserid).unwrap();
 
+    let reply;
     if qrcode.scanned & !qrcode.verified {
-        let reply = json!({
+        let json = json!({
             "successful": true,
         });
-        Ok(warp::reply::json(&reply))
+        reply = warp::reply::json(&json)
     } else {
-        let reply = json!({
+        let json = json!({
             "successful": false,
         });
-        Ok(warp::reply::json(&reply))
+        reply = warp::reply::json(&json)
     }
+    Ok(warp::reply::with_status(reply, warp::http::StatusCode::OK))
 }
 
 pub fn reauth_handler(
