@@ -47,8 +47,8 @@ impl QrCode {
             created: Instant::now(),
         }
     }
-    fn expired(&self) -> bool {
-        self.created.elapsed() > Duration::from_secs(60)
+    pub fn expired(&self) -> bool {
+        self.created.elapsed() > Duration::from_secs(20)
     }
 }
 

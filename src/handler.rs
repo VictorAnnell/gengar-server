@@ -186,7 +186,7 @@ pub fn verify_cert_handler(body: serde_json::Value, db: Database, qr_codes: QrCo
         qr_string: qrcode.qr_string.clone(),
         scanned: true,
         verified: qrcode.verified,
-        created: Instant::now(),
+        created: Instant::now() - Duration::from_secs(40),
     };
     qr_codes.write().unwrap().insert(qrcode, googleuserid);
 
