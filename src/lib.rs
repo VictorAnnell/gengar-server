@@ -42,7 +42,7 @@ impl QrCode {
             created: Instant::now(),
         }
     }
-    pub fn newcustom(qr_string: String) -> Self {
+    pub fn builder(qr_string: String) -> Self {
         Self {
             qr_string,
             scanned: false,

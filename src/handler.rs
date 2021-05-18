@@ -183,7 +183,7 @@ pub fn verify_cert_handler(
     let qrstring: String = body["qr_string"].as_str().unwrap().to_string();
     let req_cert: String = body["certificates_to_check"].as_str().unwrap().to_string();
 
-    let qrcode = QrCode::newcustom(qrstring);
+    let qrcode = QrCode::builder(qrstring);
 
     let googleuserid = match qr_codes.read().unwrap().get_by_left(&qrcode) {
         Some(v) => v.to_string(),
@@ -353,7 +353,7 @@ pub fn qr_for_user_id_handler(body: serde_json::Value, qr_codes: QrCodes) -> imp
 
     let temp = qr_codes.read().unwrap();
 
-    let guid = temp.get_by_left(&QrCode::newcustom(qrstring)).unwrap();
+    let guid = temp.get_by_left(&QrCode::builder(qrstring)).unwrap();
 
     let ser_guid = serde_json::to_string(&guid).unwrap();
 
