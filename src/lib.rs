@@ -5,9 +5,16 @@ use mysql::{chrono::NaiveDate, prelude::Queryable, Pool};
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
-use std::sync::RwLock;
+use std::{
+    cmp::Ordering,
+    hash::{Hash, Hasher},
+    sync::Arc,
+};
 use std::{convert::Infallible, env, net::ToSocketAddrs};
+use std::{
+    sync::RwLock,
+    time::{Duration, Instant},
+};
 use warp::{Filter, Reply};
 
 pub mod handler;
@@ -18,9 +25,92 @@ pub struct GoogleToken {
     id_token: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct QrString {
+#[derive(Clone, Debug)]
+pub struct QrCode {
     qr_string: String,
+    scanned: bool,
+    verified: bool,
+    created: Instant,
+}
+
+impl QrCode {
+    pub fn new() -> Self {
+        Self {
+            qr_string: generate_rand_string(),
+            scanned: false,
+            verified: false,
+            created: Instant::now(),
+        }
+    }
+    pub fn builder(qr_string: String) -> Self {
+        Self {
+            qr_string,
+            scanned: false,
+            verified: false,
+            created: Instant::now(),
+        }
+    }
+    pub fn expired(&self) -> bool {
+        if self.scanned {
+            self.created.elapsed() > Duration::from_secs(60)
+        } else {
+            self.created.elapsed() > Duration::from_secs(20)
+        }
+    }
+}
+
+impl Default for QrCode {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+// equality only depends on the qr_string data
+impl PartialEq for QrCode {
+    fn eq(&self, other: &QrCode) -> bool {
+        self.qr_string == other.qr_string
+    }
+}
+
+impl Eq for QrCode {}
+
+impl PartialOrd for QrCode {
+    fn partial_cmp(&self, other: &QrCode) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+// ordering only depends on the qr_string data
+impl Ord for QrCode {
+    fn cmp(&self, other: &QrCode) -> Ordering {
+        self.qr_string.cmp(&other.qr_string)
+    }
+}
+
+// hash only depends on the qr_string data
+impl Hash for QrCode {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.qr_string.hash(state);
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct SessionId {
+    session_id: String,
+}
+
+impl SessionId {
+    pub fn new() -> Self {
+        Self {
+            session_id: generate_rand_string(),
+        }
+    }
+}
+
+impl Default for SessionId {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 /// Information about one or more certificates associated with a single user.
@@ -37,7 +127,8 @@ pub struct CertData {
     expirationdate: NaiveDate,
 }
 
-type QrCodes = Arc<RwLock<BiMap<String, String>>>;
+type QrCodes = Arc<RwLock<BiMap<QrCode, String>>>;
+type SessionIds = Arc<RwLock<BiMap<String, String>>>;
 
 /// Gengar user and vaccine certificate database.
 #[derive(Clone)]
@@ -137,15 +228,12 @@ impl Database {
     }
 }
 
-pub fn generate_qr_string() -> QrString {
-    let rand_string: String = thread_rng()
+fn generate_rand_string() -> String {
+    thread_rng()
         .sample_iter(&Alphanumeric)
         .take(30)
         .map(char::from)
-        .collect();
-    QrString {
-        qr_string: rand_string,
-    }
+        .collect()
 }
 
 fn with_qr_codes(
@@ -154,8 +242,26 @@ fn with_qr_codes(
     warp::any().map(move || qr_codes.clone())
 }
 
+fn with_session_ids(
+    session_ids: SessionIds,
+) -> impl Filter<Extract = (SessionIds,), Error = Infallible> + Clone {
+    warp::any().map(move || session_ids.clone())
+}
+
 fn with_db(db: Database) -> impl Filter<Extract = (Database,), Error = Infallible> + Clone {
     warp::any().map(move || db.clone())
+}
+
+fn with_client_id1(
+    client_id1: String,
+) -> impl Filter<Extract = (String,), Error = Infallible> + Clone {
+    warp::any().map(move || client_id1.clone())
+}
+
+fn with_client_id2(
+    client_id2: String,
+) -> impl Filter<Extract = (String,), Error = Infallible> + Clone {
+    warp::any().map(move || client_id2.clone())
 }
 
 /// Converts one row from the database as returned by [`get_user_data`](Database::get_user_data())
@@ -186,20 +292,50 @@ pub async fn start_server() {
         .next()
         .unwrap();
 
-    let client_id = env::var("CLIENT_ID").expect("CLIENT_ID must be set");
+    let client_id1 = env::var("CLIENT_ID").expect("CLIENT_ID must be set");
+    let client_id2 = match env::var("CLIENT_ID2") {
+        Ok(var) => var,
+        Err(_) => {
+            eprintln!("CLIENT_ID2 not set. Only using one Client ID");
+            client_id1.clone()
+        }
+    };
+
+    // let client_id2 = env::var("CLIENT_ID2").unwrap_or(|| eprintln!("CLIENT_ID2 not set. Only using one Client ID"); client_id1);
 
     let db = Database::new();
 
     let qr_codes: QrCodes = Arc::new(RwLock::new(BiMap::new()));
+    let session_ids: SessionIds = Arc::new(RwLock::new(BiMap::new()));
 
     let route = warp::any()
         .and(user_certs_route(db.clone()))
-        .or(user_data_route(db.clone()))
-        .or(post_token_route(client_id.clone()))
+        .or(user_data_route(db.clone(), session_ids.clone()))
+        .or(post_token_route(
+            client_id1.clone(),
+            client_id2.clone(),
+            db.clone(),
+            session_ids.clone(),
+        ))
         .or(websocket_route())
-        .or(user_get_qr_string_route(qr_codes.clone()))
+        .or(user_get_qr_string_route(
+            qr_codes.clone(),
+            db.clone(),
+            session_ids.clone(),
+        ))
         .or(get_user_id_with_qr_string(qr_codes.clone()))
-        .or(verify_cert_route(db.clone(), qr_codes.clone()));
+        .or(verify_cert_route(
+            db.clone(),
+            qr_codes.clone(),
+            session_ids.clone(),
+        ))
+        .or(poll_route(qr_codes.clone(), session_ids.clone()))
+        .or(reauth_route(
+            client_id1.clone(),
+            client_id2.clone(),
+            db.clone(),
+            qr_codes.clone(),
+        ));
 
     let route = route.with(warp::log(""));
 
@@ -224,12 +360,21 @@ fn user_certs_route(db: Database) -> warp::filters::BoxedFilter<(impl Reply,)> {
         .boxed()
 }
 
-//POST example.org/login
-fn post_token_route(client_id: String) -> warp::filters::BoxedFilter<(impl Reply,)> {
-    warp::path("login")
+//POST example.org/getsessionid
+fn post_token_route(
+    client_id1: String,
+    client_id2: String,
+    db: Database,
+    session_ids: SessionIds,
+) -> warp::filters::BoxedFilter<(impl Reply,)> {
+    warp::path("getsessionid")
         .and(warp::post())
         .and(warp::body::json())
-        .map(move |token: GoogleToken| handler::post_token_handler(client_id.clone(), token))
+        .and(with_db(db))
+        .and(with_client_id1(client_id1))
+        .and(with_client_id2(client_id2))
+        .and(with_session_ids(session_ids))
+        .map(handler::post_token_handler)
         .boxed()
 }
 
@@ -241,20 +386,30 @@ curl -X POST \
 "localhost:8000/userdata"
 */
 //GET example.org/userdata/:googleuserid
-fn user_data_route(db: Database) -> warp::filters::BoxedFilter<(impl Reply,)> {
+fn user_data_route(
+    db: Database,
+    session_ids: SessionIds,
+) -> warp::filters::BoxedFilter<(impl Reply,)> {
     warp::path!("userdata")
         .and(warp::post())
         .and(warp::body::json())
         .and(with_db(db))
+        .and(with_session_ids(session_ids))
         .map(handler::userdata_handler)
         .boxed()
 }
 
-fn user_get_qr_string_route(qr_codes: QrCodes) -> warp::filters::BoxedFilter<(impl Reply,)> {
+fn user_get_qr_string_route(
+    qr_codes: QrCodes,
+    db: Database,
+    session_ids: SessionIds,
+) -> warp::filters::BoxedFilter<(impl Reply,)> {
     warp::path!("getqr")
         .and(warp::post())
         .and(warp::body::json())
         .and(with_qr_codes(qr_codes))
+        .and(with_db(db))
+        .and(with_session_ids(session_ids))
         .map(handler::get_qr_handler)
         .boxed()
 }
@@ -283,13 +438,48 @@ fn websocket_route() -> warp::filters::BoxedFilter<(impl Reply,)> {
 //    .map(handler::post_session_id).boxed()
 // }
 
-fn verify_cert_route(db: Database, qr_codes: QrCodes) -> warp::filters::BoxedFilter<(impl Reply,)> {
+fn verify_cert_route(
+    db: Database,
+    qr_codes: QrCodes,
+    session_ids: SessionIds,
+) -> warp::filters::BoxedFilter<(impl Reply,)> {
     warp::path!("verify")
         .and(warp::post())
         .and(warp::body::json())
         .and(with_db(db))
         .and(with_qr_codes(qr_codes))
+        .and(with_session_ids(session_ids))
         .map(handler::verify_cert_handler)
+        .boxed()
+}
+
+fn poll_route(
+    qr_codes: QrCodes,
+    session_ids: SessionIds,
+) -> warp::filters::BoxedFilter<(impl Reply,)> {
+    warp::path!("poll")
+        .and(warp::post())
+        .and(warp::body::json())
+        .and(with_qr_codes(qr_codes))
+        .and(with_session_ids(session_ids))
+        .map(handler::poll_handler)
+        .boxed()
+}
+
+fn reauth_route(
+    client_id1: String,
+    client_id2: String,
+    db: Database,
+    qr_codes: QrCodes,
+) -> warp::filters::BoxedFilter<(impl Reply,)> {
+    warp::path("reauth")
+        .and(warp::post())
+        .and(warp::body::json())
+        .and(with_client_id1(client_id1))
+        .and(with_client_id2(client_id2))
+        .and(with_db(db))
+        .and(with_qr_codes(qr_codes))
+        .map(handler::reauth_handler)
         .boxed()
 }
 
@@ -377,22 +567,17 @@ mod tests {
     #[test]
     fn user_exist() {
         let db = Database::new();
-        assert_eq!(
-            db.user_exist(String::from("234385785823438578589"))
-                .unwrap(),
-            true
-        );
-        assert_eq!(
-            db.user_exist(String::from("nonexistant_user")).unwrap(),
-            false
-        );
+        assert!(db
+            .user_exist(String::from("234385785823438578589"))
+            .unwrap());
+        assert!(!db.user_exist(String::from("nonexistant_user")).unwrap());
     }
 
     #[test]
-    fn generate_qr_string_test() {
-        let rand_1 = generate_qr_string();
-        let rand_2 = generate_qr_string();
-        assert_eq!(rand_1.qr_string.len(), rand_2.qr_string.len());
-        assert_ne!(rand_1.qr_string, rand_2.qr_string);
+    fn generate_rand_string_test() {
+        let rand_1 = generate_rand_string();
+        let rand_2 = generate_rand_string();
+        assert_eq!(rand_1.len(), rand_2.len());
+        assert_ne!(rand_1, rand_2);
     }
 }
